@@ -80,11 +80,11 @@ func (c *ClientGRPC) Load(connFunc func(conn *grpc.ClientConn)) (err error) {
 }
 
 type ServiceRPC struct {
-	Port              int
-	ServiceName       string
-	ConnectionTimeout int //s
-	Etcd              *ConfigEtcd
-	Auth              *Auth
+	Port              int         `json:"port" yaml:"port"`
+	ServiceName       string      `json:"serviceName" yaml:"serviceName"`
+	ConnectionTimeout int         `json:"connectionTimeout" yaml:"connectionTimeout"` //s
+	Etcd              *ConfigEtcd `json:"etcd" yaml:"etcd"`
+	Auth              *Auth       `json:"auth" yaml:"auth"`
 }
 
 func (c *ServiceRPC) Load(regiser func(srv *grpc.Server), errFunc func(err error)) {

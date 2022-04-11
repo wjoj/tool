@@ -4,7 +4,6 @@ import (
 	"context"
 	"crypto/tls"
 	"crypto/x509"
-	"fmt"
 	"io/ioutil"
 	"sync"
 	"time"
@@ -16,18 +15,18 @@ import (
 )
 
 type Account struct {
-	User string
-	Pass string
+	User string `json:"user" yaml:"user"`
+	Pass string `json:"pass" yaml:"pass"`
 }
 
 type ConfigEtcd struct {
-	Endpoints          []string
-	UserName           string
-	Pass               string `json:",optional"`
-	CertFile           string `json:",optional"`
-	CertKeyFile        string `json:",optional=CertFile"`
-	CACertFile         string `json:",optional=CertFile"`
-	InsecureSkipVerify bool   `json:",optional"`
+	Endpoints          []string `json:"endpoints" yaml:"endpoints"`
+	UserName           string   `json:"userName" yaml:"userName"`
+	Pass               string   `json:"pass,optional" yaml:"pass"`
+	CertFile           string   `json:"certFile,optional" yaml:"certFile"`
+	CertKeyFile        string   `json:"certKeyFile,optional=CertFile" yaml:"certKeyFile"`
+	CACertFile         string   `json:"caCertFile,optional=CertFile" yaml:"caCertFile"`
+	InsecureSkipVerify bool     `json:"insecureSkipVerify,optional" yaml:"insecureSkipVerify"`
 	serviceName        string
 }
 
@@ -166,7 +165,6 @@ func (c *ClientEtcd) KeepAliveAsync() error {
 		isExit := false
 		select {
 		case _, ok := <-ch:
-			fmt.Printf("\nKeepAlive:%v", ok)
 			if !ok {
 				c.Reconnect()
 				isExit = true
