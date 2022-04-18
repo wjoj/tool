@@ -12,3 +12,35 @@ func TestObfus(t *testing.T) {
 func TestUUID(t *testing.T) {
 	t.Logf("%v", UUID())
 }
+
+func TestNanoID(t *testing.T) {
+	k, err := NewNanoID()
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Logf("%v", k)
+	k, err = NewNanoID(5)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Logf("%v", k)
+	i := 0
+	m := make(map[string]int)
+	for {
+		if i > 1000000 {
+			break
+		}
+		i++
+		k, err = NewNanoID(10)
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Logf("%v %v", k, i)
+		m[k]++
+	}
+	for k, cont := range m {
+		if cont > 1 {
+			t.Logf("re:%v c:%v", k, cont)
+		}
+	}
+}
