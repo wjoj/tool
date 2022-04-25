@@ -1,18 +1,19 @@
 # TOOL
 
-English | [简体中文](README-CN.md)
+[English](README.md) | 简体中文
 
-## Overview
+## 概述
 
-* Build HTTP and GRPC services
-* Quickly build SQL conditional statements
-* The LRU cache
-* Filters include Bloom and Cuckoo
-* The unique ID can be GUID, NanoID, Snowflake, or UUID
-* The Websocket
+* 构建HTTP、GPRC服务
+* 快速生成SQL条件语句
+* LRU缓存
+* 过滤器有布隆、布谷
+* 唯一ID生成方式： GUID, NanoID, Snowflake, or UUID
+* Websocket
 
-## SQL Where 
-* conditional statements are built quickly
+## SQL条件语句
+
+* 快速生成条件语句
 
 ```go
 import (

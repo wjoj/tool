@@ -8,9 +8,10 @@ import (
 )
 
 type whereIfs struct {
-	Value string
-	Key   string
-	Ifs   string
+	Value    string
+	Key      string
+	Ifs      string
+	NotValue string
 }
 
 type WhereStructure struct {
@@ -104,6 +105,16 @@ func NewWhereStructure(m interface{}, tag, tagIfs string) *WhereStructure {
 	})
 }
 
+func (m *WhereStructure) SetNotValue(key, notVal string) {
+	m.lock.Lock()
+	defer m.lock.Unlock()
+	v, is := m.whs[key]
+	if !is {
+		return
+	}
+	v.NotValue = notVal
+}
+
 func (m *WhereStructure) AddStructure(m2 *WhereStructure) {
 	if m2 == nil {
 		return
@@ -140,6 +151,9 @@ func (m *WhereStructure) GetWhereByKey(key string) *Where {
 func (m *WhereStructure) Where(ifs string) *Where {
 	wh := new(Where)
 	for _, val := range m.whs {
+		if val.Value == val.NotValue {
+			continue
+		}
 		wh.Add(fmt.Sprintf("%v %v %v", val.Key, val.Ifs, val.Value), ifs)
 	}
 	return wh
