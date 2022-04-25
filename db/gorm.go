@@ -14,6 +14,7 @@ import (
 	"gorm.io/driver/sqlserver"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
+	"gorm.io/gorm/schema"
 )
 
 type DBType string
@@ -106,7 +107,11 @@ func (c *Config) OpenDB() (*gorm.DB, error) {
 		dbDSN = sqlite.Open(fmt.Sprintf("%v.db", dbObj.DBName))
 
 	}
-	dbConfig := &gorm.Config{}
+	dbConfig := &gorm.Config{
+		NamingStrategy: schema.NamingStrategy{
+			SingularTable: true,
+		},
+	}
 	if len(c.LogPath) != 0 {
 		var out logger.Writer
 		if c.LogPath == DBLogModelTypeConsole {
@@ -121,10 +126,10 @@ func (c *Config) OpenDB() (*gorm.DB, error) {
 		dbConfig.Logger = logger.New(
 			out, // io writer
 			logger.Config{
-				SlowThreshold:             time.Second,   // Slow SQL threshold
-				LogLevel:                  logger.Silent, // Log level
-				IgnoreRecordNotFoundError: true,          // Ignore ErrRecordNotFound error for logger
-				Colorful:                  true,          // Disable color
+				SlowThreshold:             time.Second, // Slow SQL threshold
+				LogLevel:                  logger.Info, // Log level
+				IgnoreRecordNotFoundError: true,        // Ignore ErrRecordNotFound error for logger
+				Colorful:                  true,        // Disable color
 			},
 		)
 	}
@@ -133,6 +138,7 @@ func (c *Config) OpenDB() (*gorm.DB, error) {
 	if err != nil {
 		return nil, fmt.Errorf("数据库链接错误: %v", err)
 	}
+
 	dc, err := db.DB()
 	if err != nil {
 		return nil, err
@@ -145,6 +151,10 @@ func (c *Config) OpenDB() (*gorm.DB, error) {
 	}
 	if dbObj.PoolLifeTime != 0 {
 		dc.SetConnMaxLifetime(c.PoolLifeTime)
+	}
+
+	if err := dc.Ping(); err != nil {
+		return nil, err
 	}
 
 	return db, nil
