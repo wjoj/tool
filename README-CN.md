@@ -10,6 +10,9 @@
 * 过滤器有布隆、布谷
 * 唯一ID生成方式： GUID, NanoID, Snowflake, or UUID
 * Websocket
+* 参数验证器
+* 类型转换
+* 字符验证
 
 ## SQL条件语句
 

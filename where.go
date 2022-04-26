@@ -7,6 +7,23 @@ import (
 	"sync"
 )
 
+type WhereOrderType int
+
+const (
+	WhereOrderTypeNot  WhereOrderType = -1
+	WhereOrderTypeASC                 = 0
+	WhereOrderTypeDesc                = 1
+)
+
+func (m WhereOrderType) Key(name string) string {
+	if m == WhereOrderTypeASC {
+		return name + " asc"
+	} else if m == WhereOrderTypeDesc {
+		return name + " desc"
+	}
+	return ""
+}
+
 type whereIfs struct {
 	Value    string
 	Key      string
@@ -144,6 +161,10 @@ func (m *WhereStructure) GetWhereByKey(key string) *Where {
 		return nil
 	}
 	wh := new(Where)
+	if mw.Value == mw.NotValue {
+		return wh
+	}
+	mw.Value = whereQuotes(mw.Value).(string)
 	wh.Add(fmt.Sprintf("%v %v %v", mw.Key, mw.Ifs, mw.Value), "")
 	return wh
 }
@@ -154,6 +175,7 @@ func (m *WhereStructure) Where(ifs string) *Where {
 		if val.Value == val.NotValue {
 			continue
 		}
+		val.Value = whereQuotes(val.Value).(string)
 		wh.Add(fmt.Sprintf("%v %v %v", val.Key, val.Ifs, val.Value), ifs)
 	}
 	return wh
@@ -187,10 +209,12 @@ func (w *Where) OR(str string) {
 }
 
 func (w *Where) AndIf(key string, ifs string, val interface{}) {
+	val = whereQuotes(val)
 	w.And(fmt.Sprintf("%v%v%v", key, ifs, val))
 }
 
 func (w *Where) OrIf(key string, ifs string, val interface{}) {
+	val = whereQuotes(val)
 	w.OR(fmt.Sprintf("%v%v%v", key, ifs, val))
 }
 
@@ -198,6 +222,7 @@ func (w *Where) AndIfNotVal(key string, ifs string, val interface{}, notVal inte
 	if val == notVal {
 		return
 	}
+	val = whereQuotes(val)
 	w.And(fmt.Sprintf("%v %v %v", key, ifs, val))
 }
 
@@ -205,6 +230,7 @@ func (w *Where) OrIfNotVal(key string, ifs string, val interface{}, notVal inter
 	if val == notVal {
 		return
 	}
+	val = whereQuotes(val)
 	w.OR(fmt.Sprintf("%v %v %v", key, ifs, val))
 }
 
@@ -223,6 +249,7 @@ func (w *Where) ORWhere(wh *Where) {
 }
 
 func (w *Where) Keys(keys []string, ifs string, val interface{}, tag string) {
+	val = whereQuotes(val)
 	var str strings.Builder
 	for i, key := range keys {
 		sql := fmt.Sprintf("%v%v%v", key, ifs, val)
@@ -302,4 +329,14 @@ func (w *Where) ORWhereStructure(m *WhereStructure, ifs string) {
 		return
 	}
 	w.ORWhere(m.Where(ifs))
+}
+
+func whereQuotes(v interface{}) interface{} {
+	switch ty := reflect.TypeOf(v); ty.Kind() {
+	case reflect.String:
+		if !IsDigit(v.(string)) {
+			return fmt.Sprintf("'%v'", v)
+		}
+	}
+	return v
 }

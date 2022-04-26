@@ -10,6 +10,9 @@ English | [简体中文](README-CN.md)
 * Filters include Bloom and Cuckoo
 * The unique ID can be GUID, NanoID, Snowflake, or UUID
 * The Websocket
+* Parameter validator
+* Type conversion
+* Verify the characters
 
 ## SQL Where 
 * conditional statements are built quickly

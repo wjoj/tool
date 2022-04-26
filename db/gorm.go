@@ -143,6 +143,7 @@ func (c *Config) OpenDB() (*gorm.DB, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	if dbObj.PoolFreeNumber != 0 {
 		dc.SetMaxIdleConns(c.PoolFreeNumber)
 	}
