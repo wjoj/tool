@@ -11,19 +11,35 @@ import (
 	"time"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/health"
+	healthpb "google.golang.org/grpc/health/grpc_health_v1"
 )
 
+func serviceConfig(balancing string, srvName string) string {
+	if len(balancing) == 0 {
+		balancing = "round_robin"
+	}
+	return fmt.Sprintf(`{
+		"loadBalancingPolicy": "%v",
+		"healthCheckConfig": {
+			"serviceName": "%s"
+		}
+	}`, balancing, srvName)
+}
+
 const (
-	DirectScheme    = "direct"
-	DiscoverScheme  = "discover"
+	DirectScheme    = "direct"   //
+	DiscoverScheme  = "discover" //
+	K8sScheme       = "k8s"
 	EndpointSepChar = ','
 	subsetSize      = 30
 )
 
-type ClientGRPC struct {
+type ConfigClient struct {
 	ServiceName  string
 	NonBlock     bool
-	BalancerName string
+	BalancerName string   ///round_robin pick_first
 	ConTimeout   int64    `json:"conTimeout" yaml:"conTimeout"`
 	Endpoints    []string `json:"endpoints" yaml:"endpoints"`
 	Target       string
@@ -31,7 +47,7 @@ type ClientGRPC struct {
 	Auth         *Auth
 }
 
-func (c *ClientGRPC) BuildTarget() (string, error) {
+func (c *ConfigClient) BuildTarget() (string, error) {
 	if len(c.Target) != 0 {
 		return c.Target, nil
 	}
@@ -44,31 +60,36 @@ func (c *ClientGRPC) BuildTarget() (string, error) {
 	return BuildDiscoverTarget(c.Etcd.Endpoints, c.Etcd.serviceName), nil
 }
 
-func (c *ClientGRPC) Load(connFunc func(conn *grpc.ClientConn)) (err error) {
+func (c *ConfigClient) Start(connFunc func(conn *grpc.ClientConn)) (err error) {
 	if c.Etcd != nil {
 		discoverContainer, err = NewEtcd(c.Etcd, c.ServiceName)
 	}
 	target, err := c.BuildTarget()
 	var opts []grpc.DialOption
+	opts = append([]grpc.DialOption(nil), grpc.WithTransportCredentials(insecure.NewCredentials())) //grpc.WithInsecure()
+
 	if c.Auth != nil {
 		if len(c.Auth.Token) == 0 || len(c.Auth.App) == 0 {
-			return fmt.Errorf("token or app ")
+			return fmt.Errorf("token or app is empty")
 		}
 		opts = append(opts, grpc.WithPerRPCCredentials(c.Auth))
 	}
 
-	// opts = append(opts, grpc.WithTimeout(time.Second))
 	if c.NonBlock {
 		opts = append(opts, grpc.WithBlock()) //NonBlock //创建conn报错返回
 	}
-	if len(c.BalancerName) != 0 {
-		opts = append(opts, grpc.WithBalancerName(c.BalancerName)) //获取注册平衡器 balancer.Register
+	if len(c.BalancerName) == 0 {
+		c.BalancerName = "round_robin"
 	}
+	if c.ConTimeout == 0 {
+		c.ConTimeout = 1
+	}
+	opts = append(opts, grpc.WithDefaultServiceConfig(serviceConfig(c.BalancerName, c.ServiceName))) //获取注册平衡器 balancer.Register
 
 	// opts = append(opts, grpc.WithChainUnaryInterceptor())  //拦截器 路由追踪 监控 断路器 控制超时链接器
 	// opts = append(opts, grpc.WithChainStreamInterceptor()) //流路由
-	opts = append([]grpc.DialOption(nil), grpc.WithInsecure())
-	timeCtx, cancel := context.WithTimeout(context.Background(), time.Second*3)
+
+	timeCtx, cancel := context.WithTimeout(context.Background(), time.Second*time.Duration(c.ConTimeout))
 	defer cancel()
 	// target = "passthrough:127.0.0.1:9520"
 	conn, err := grpc.DialContext(timeCtx, target, opts...)
@@ -79,7 +100,7 @@ func (c *ClientGRPC) Load(connFunc func(conn *grpc.ClientConn)) (err error) {
 	return
 }
 
-type ServiceRPC struct {
+type ConfigService struct {
 	Port              int         `json:"port" yaml:"port"`
 	ServiceName       string      `json:"serviceName" yaml:"serviceName"`
 	ConnectionTimeout int         `json:"connectionTimeout" yaml:"connectionTimeout"` //s
@@ -87,7 +108,7 @@ type ServiceRPC struct {
 	Auth              *Auth       `json:"auth" yaml:"auth"`
 }
 
-func (c *ServiceRPC) Load(regiser func(srv *grpc.Server), errFunc func(err error)) {
+func (c *ConfigService) Start(regiser func(srv *grpc.Server), errFunc func(err error)) {
 	if c.Etcd != nil {
 		disContainer, err := NewEtcd(c.Etcd, c.ServiceName)
 		if err != nil {
@@ -103,6 +124,11 @@ func (c *ServiceRPC) Load(regiser func(srv *grpc.Server), errFunc func(err error
 		return
 	}
 	s := grpc.NewServer(grpc.ConnectionTimeout(time.Duration(c.ConnectionTimeout) * time.Second))
+
+	healthcheck := health.NewServer()
+	healthcheck.SetServingStatus(c.ServiceName, healthpb.HealthCheckResponse_SERVING)
+	healthpb.RegisterHealthServer(s, healthcheck)
+
 	regiser(s)
 	go func() {
 		if err = s.Serve(lis); err != nil {

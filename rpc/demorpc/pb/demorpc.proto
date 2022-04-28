@@ -1,0 +1,24 @@
+syntax = "proto3";
+
+package demorpc;
+
+//protoc --go_out=plugins=grpc:. demorpc.proto
+service  Hello {
+	rpc Info(request) returns (response){}
+}
+
+message request {
+    string name = 1;
+    string phone = 2;
+}
+
+message  response {
+    string msg = 1;
+    int32  code = 2;
+    info   data =3;
+}
+
+message info {
+   string name = 1;
+   string phone = 2;
+}

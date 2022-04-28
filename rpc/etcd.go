@@ -22,11 +22,11 @@ type Account struct {
 type ConfigEtcd struct {
 	Endpoints          []string `json:"endpoints" yaml:"endpoints"`
 	UserName           string   `json:"userName" yaml:"userName"`
-	Pass               string   `json:"pass,optional" yaml:"pass"`
-	CertFile           string   `json:"certFile,optional" yaml:"certFile"`
-	CertKeyFile        string   `json:"certKeyFile,optional=CertFile" yaml:"certKeyFile"`
-	CACertFile         string   `json:"caCertFile,optional=CertFile" yaml:"caCertFile"`
-	InsecureSkipVerify bool     `json:"insecureSkipVerify,optional" yaml:"insecureSkipVerify"`
+	Pass               string   `json:"pass" yaml:"pass"`
+	CertFile           string   `json:"certFile" yaml:"certFile"`
+	CertKeyFile        string   `json:"certKeyFile" yaml:"certKeyFile"`
+	CACertFile         string   `json:"caCertFile" yaml:"caCertFile"`
+	InsecureSkipVerify bool     `json:"insecureSkipVerify" yaml:"insecureSkipVerify"`
 	serviceName        string
 }
 
