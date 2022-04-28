@@ -168,3 +168,20 @@ func ToURLDecode(str string) ([]byte, error) {
 func ToJoint(sep string, s ...string) string {
 	return strings.Join(s, sep)
 }
+
+func ToJointFunc(sep string, lng int, sF func(index int) string) string {
+	var str strings.Builder
+	for i := 0; i < lng; i++ {
+		s := sF(i)
+		if len(s) == 0 {
+			continue
+		}
+		if str.Len() == 0 {
+			str.WriteString(sF(i))
+		} else {
+			str.WriteString(sep)
+			str.WriteString(sF(i))
+		}
+	}
+	return str.String()
+}

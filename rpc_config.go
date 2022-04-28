@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 
 	"github.com/gin-gonic/gin"
+	"github.com/wjoj/tool/db"
 	"github.com/wjoj/tool/rpc"
 	"gopkg.in/yaml.v2"
 )
@@ -25,9 +26,21 @@ func (e EnvironmentType) GinMode() string {
 }
 
 type SetviceConfig struct {
-	Environment EnvironmentType `json:"environment" yaml:"environment"`
-	Name        string          `json:"name" yaml:"name"`
-	RPC         *rpc.ServiceRPC `json:"rpc" yaml:"rpc"`
+	Environment EnvironmentType    `json:"environment" yaml:"environment"`
+	Name        string             `json:"name" yaml:"name"`
+	RPC         *rpc.ConfigService `json:"rpc" yaml:"rpc"`
+	DB          *db.Config         `json:"db" yaml:"db"`
+}
+
+func (c *SetviceConfig) Show() {
+	msg := ""
+	msg += "Server Name: " + c.Name
+	msg += fmt.Sprintln("The Environment: " + c.Environment)
+	msg += fmt.Sprintln("" + fmt.Sprintf("RPC Service Port: %v", c.RPC.Port))
+	if c.DB != nil {
+		c.DB.Show()
+	}
+	fmt.Println(msg)
 }
 
 func NewServiceConfig(fpath string) (*SetviceConfig, error) {

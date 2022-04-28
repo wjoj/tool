@@ -16,6 +16,19 @@ type HTTPConfig struct {
 	DB          *db.Config      `json:"db" yaml:"db"`
 }
 
+func (c *HTTPConfig) Show() {
+	msg := ""
+	msg += "Server Name: " + c.Name
+	msg += fmt.Sprintln("The Environment: " + c.Environment)
+	if c.Http != nil {
+		msg += fmt.Sprintln("" + fmt.Sprintf("HTTP Service Port: %v", c.Http.Port))
+	}
+	if c.DB != nil {
+		c.DB.Show()
+	}
+	fmt.Println(msg)
+}
+
 func NewHTTPConfig(fpath string) (*HTTPConfig, error) {
 	yamlFile, err := ioutil.ReadFile(fpath)
 	if err != nil {

@@ -13,7 +13,7 @@ func IsInteger(val string) bool {
 }
 
 func IsNegativeInteger(val string) bool {
-	k, _ := regexp.MatchString("^-[0-9]*$", val)
+	k, _ := regexp.MatchString("^-[0-9]+$", val)
 	return k
 }
 

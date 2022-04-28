@@ -48,6 +48,23 @@ type Config struct {
 	LogPath        DBLogModelType `json:"logpath" yaml:"logpath"`
 }
 
+func (c *Config) Show() {
+	msg := ""
+	msg += fmt.Sprintln("Data storage type " + c.Type)
+	msg += fmt.Sprintln("Account: " + c.Account + " Password: " + c.Password)
+	msg += fmt.Sprintln("Host: " + c.Host + " Port: " + fmt.Sprintf("%d", c.Port))
+	msg += fmt.Sprintln("DBName: " + c.DBName)
+	msg += fmt.Sprintln("Pool: " + fmt.Sprintf("%d Free pool: %d", c.PoolNumber, c.PoolFreeNumber))
+	if len(c.LogPath) != 0 {
+		if c.LogPath == DBLogModelTypeConsole {
+			msg += fmt.Sprintln("Log type " + c.LogPath)
+		} else {
+			msg += fmt.Sprintln("Log type file path: " + c.LogPath)
+		}
+	}
+	fmt.Println(msg)
+}
+
 func (c *Config) IsDB() error {
 	if c == nil || len(c.Type) == 0 {
 		return fmt.Errorf("db configuration is empty")
@@ -69,7 +86,7 @@ func (c *Config) OpenDB() (*gorm.DB, error) {
 			return nil, fmt.Errorf("数据库链接错误: 数据库链接的账号或密码不能为空")
 		}
 		dbDSN = mysql.New(mysql.Config{
-			DSN: fmt.Sprintf("%v:%v@tcp(%v:%v)/%v?charset=utf8mb4&parseTime=False&loc=Local&allowNativePasswords=true",
+			DSN: fmt.Sprintf("%v:%v@tcp(%v:%v)/%v?charset=utf8mb4&parseTime=True&loc=Local&allowNativePasswords=true",
 				dbObj.Account,
 				dbObj.Password,
 				dbObj.Host,
