@@ -12,7 +12,7 @@ English | [简体中文](README-CN.md)
 * The Websocket
 * Parameter validator
 * Type conversion
-* Verify the characters
+* Verify the characters、AES、DES、RSA
 
 ## SQL Where 
 * conditional statements are built quickly

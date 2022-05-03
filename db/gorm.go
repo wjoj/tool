@@ -50,16 +50,16 @@ type Config struct {
 
 func (c *Config) Show() {
 	msg := ""
-	msg += fmt.Sprintln("Data storage type " + c.Type)
-	msg += fmt.Sprintln("Account: " + c.Account + " Password: " + c.Password)
-	msg += fmt.Sprintln("Host: " + c.Host + " Port: " + fmt.Sprintf("%d", c.Port))
-	msg += fmt.Sprintln("DBName: " + c.DBName)
-	msg += fmt.Sprintln("Pool: " + fmt.Sprintf("%d Free pool: %d", c.PoolNumber, c.PoolFreeNumber))
+	msg += fmt.Sprintf("Data storage type %s", c.Type)
+	msg += fmt.Sprintf("\nAccount: %s Password: %s", c.Account, c.Password)
+	msg += fmt.Sprintf("\nHost: " + c.Host + " Port: " + fmt.Sprintf("%d", c.Port))
+	msg += fmt.Sprintf("\nDBName: " + c.DBName)
+	msg += fmt.Sprintf("\nPool: " + fmt.Sprintf("%d Free pool: %d", c.PoolNumber, c.PoolFreeNumber))
 	if len(c.LogPath) != 0 {
 		if c.LogPath == DBLogModelTypeConsole {
-			msg += fmt.Sprintln("Log type " + c.LogPath)
+			msg += fmt.Sprintf("\nLog type %s", c.LogPath)
 		} else {
-			msg += fmt.Sprintln("Log type file path: " + c.LogPath)
+			msg += fmt.Sprintf("\nLog type file path: %s", c.LogPath)
 		}
 	}
 	fmt.Println(msg)
@@ -175,5 +175,16 @@ func (c *Config) OpenDB() (*gorm.DB, error) {
 		return nil, err
 	}
 
+	return db, nil
+}
+
+func (c *Config) StartDB() (*gorm.DB, error) {
+	if err := c.IsDB(); err != nil {
+		return nil, nil
+	}
+	db, err := c.OpenDB()
+	if err != nil {
+		return nil, err
+	}
 	return db, nil
 }

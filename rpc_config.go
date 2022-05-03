@@ -35,8 +35,8 @@ type SetviceConfig struct {
 func (c *SetviceConfig) Show() {
 	msg := ""
 	msg += "Server Name: " + c.Name
-	msg += fmt.Sprintln("The Environment: " + c.Environment)
-	msg += fmt.Sprintln("" + fmt.Sprintf("RPC Service Port: %v", c.RPC.Port))
+	msg += fmt.Sprintf("\nThe Environment: %s", c.Environment)
+	msg += fmt.Sprintf("\nRPC Service Port: %v", c.RPC.Port)
 	if c.DB != nil {
 		c.DB.Show()
 	}

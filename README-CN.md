@@ -12,7 +12,7 @@
 * Websocket
 * 参数验证器
 * 类型转换
-* 字符验证
+* 字符验证、AES、DES、RSA
 
 ## SQL条件语句
 

@@ -53,13 +53,13 @@ func HTTPDone(errfunc func(err error), srvs ...*http.Server) {
 	}()
 }
 
-func DefaultHTTPServer(env string, errfunc func(err error), cfg *HTTP, handler http.Handler) {
-	if cfg == nil {
+func (c *HTTP) Start(env string, errfunc func(err error), handler http.Handler) {
+	if c == nil {
 		errfunc(errors.New("the HTTP service configuration is empty"))
 		return
 	}
-	if cfg.Port == 0 {
-		cfg.Port = 8080
+	if c.Port == 0 {
+		c.Port = 8080
 	}
-	HTTPDone(errfunc, HTTPServer(env, cfg, handler))
+	HTTPDone(errfunc, HTTPServer(env, c, handler))
 }
