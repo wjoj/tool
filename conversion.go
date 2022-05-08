@@ -8,46 +8,42 @@ import (
 	"fmt"
 	"math/big"
 	"net"
+	"reflect"
 	"strconv"
 	"strings"
 )
 
 func ToString(value interface{}) string {
-	switch v := value.(type) {
-	case string:
-		return v
-	case int:
+	v := reflect.TypeOf(value).Kind()
+	switch v { //v := value.(type)
+	case reflect.String:
+		return value.(string)
+	case reflect.Int:
 		return strconv.FormatInt(int64(v), 10)
-	case int8:
+	case reflect.Int8:
 		return strconv.FormatInt(int64(v), 10)
-	case int16:
+	case reflect.Int16:
 		return strconv.FormatInt(int64(v), 10)
-	case int32:
+	case reflect.Int32:
 		return strconv.FormatInt(int64(v), 10)
-	case int64:
-		return strconv.FormatInt(v, 10)
-	case uint:
+	case reflect.Int64:
+		return strconv.FormatInt(int64(v), 10)
+	case reflect.Uint:
 		return strconv.FormatUint(uint64(v), 10)
-	case uint8:
+	case reflect.Uint8:
 		return strconv.FormatUint(uint64(v), 10)
-	case uint16:
+	case reflect.Uint16:
 		return strconv.FormatUint(uint64(v), 10)
-	case uint32:
+	case reflect.Uint32:
 		return strconv.FormatUint(uint64(v), 10)
-	case uint64:
-		return strconv.FormatUint(v, 10)
-	case float64:
+	case reflect.Uint64:
+		return strconv.FormatUint(uint64(v), 10)
+	case reflect.Float64:
 		return strconv.FormatFloat(float64(v), 'f', 0, 64)
-	case float32:
+	case reflect.Float32:
 		return strconv.FormatFloat(float64(v), 'f', 0, 32)
-	case map[string]string:
-		bt, errors := json.Marshal(value)
-		if errors != nil {
-			return errors.Error()
-		} else {
-			return string(bt)
-		}
-	case map[string]interface{}:
+	case reflect.Array, reflect.Map,
+		reflect.Struct, reflect.Slice:
 		bt, errors := json.Marshal(value)
 		if errors != nil {
 			return errors.Error()
@@ -72,6 +68,8 @@ func ToInt(value interface{}) int {
 		number = int(float32(v))
 	case string:
 		number, _ = strconv.Atoi(string(v))
+	default:
+		number = 0
 	}
 	return number
 }

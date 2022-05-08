@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/wjoj/tool/trace"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/health"
@@ -45,6 +46,7 @@ type ConfigClient struct {
 	Target       string
 	Etcd         *ConfigEtcd
 	Auth         *Auth
+	Trace        *trace.TracerCfg
 }
 
 func (c *ConfigClient) BuildTarget() (string, error) {
@@ -84,10 +86,24 @@ func (c *ConfigClient) Start(connFunc func(conn *grpc.ClientConn)) (err error) {
 	if c.ConTimeout == 0 {
 		c.ConTimeout = 1
 	}
-	opts = append(opts, grpc.WithDefaultServiceConfig(serviceConfig(c.BalancerName, c.ServiceName))) //获取注册平衡器 balancer.Register
 
-	// opts = append(opts, grpc.WithChainUnaryInterceptor())  //拦截器 路由追踪 监控 断路器 控制超时链接器
-	// opts = append(opts, grpc.WithChainStreamInterceptor()) //流路由
+	opts = append(opts, grpc.WithDefaultServiceConfig(serviceConfig(c.BalancerName, c.ServiceName))) //获取注册平衡器 balancer.Register
+	clientInterceptors := []grpc.UnaryClientInterceptor{}
+	streamInterceptors := []grpc.StreamClientInterceptor{}
+	if c.Trace != nil {
+		tracer, err := trace.NewTracer(c.Trace, c.ServiceName, true)
+		if err != nil {
+			return err
+		}
+		clientInterceptors = append(clientInterceptors, trace.TracerGrpcClientUnaryInterceptor(tracer))
+		streamInterceptors = append(streamInterceptors, trace.TracerGrpcStreamClientUnaryInterceptor(tracer))
+	}
+	if len(clientInterceptors) != 0 {
+		opts = append(opts, grpc.WithChainUnaryInterceptor(clientInterceptors...)) //拦截器 路由追踪 监控 断路器 控制超时链接器
+	}
+	if len(streamInterceptors) != 0 {
+		opts = append(opts, grpc.WithChainStreamInterceptor(streamInterceptors...)) //流路由
+	}
 
 	timeCtx, cancel := context.WithTimeout(context.Background(), time.Second*time.Duration(c.ConTimeout))
 	defer cancel()
@@ -106,6 +122,7 @@ type ConfigService struct {
 	ConnectionTimeout int         `json:"connectionTimeout" yaml:"connectionTimeout"` //s
 	Etcd              *ConfigEtcd `json:"etcd" yaml:"etcd"`
 	Auth              *Auth       `json:"auth" yaml:"auth"`
+	Trace             *trace.TracerCfg
 }
 
 func (c *ConfigService) Start(regiser func(srv *grpc.Server), errFunc func(err error)) {
@@ -123,13 +140,37 @@ func (c *ConfigService) Start(regiser func(srv *grpc.Server), errFunc func(err e
 		errFunc(err)
 		return
 	}
-	s := grpc.NewServer(grpc.ConnectionTimeout(time.Duration(c.ConnectionTimeout) * time.Second))
+
+	unaryInterceptors := []grpc.UnaryServerInterceptor{}
+	streamInterceptors := []grpc.StreamServerInterceptor{}
+	if c.Trace != nil {
+		tracer, err := trace.NewTracer(c.Trace, c.ServiceName, true)
+		if err != nil {
+			errFunc(err)
+			return
+		}
+		unaryInterceptors = append(unaryInterceptors, trace.TracerGrpcServerUnaryInterceptor(tracer))
+		streamInterceptors = append(streamInterceptors, trace.TracerGrpcStreamServerUnaryInterceptor(tracer))
+	}
+
+	options := []grpc.ServerOption{
+		grpc.ConnectionTimeout(time.Duration(c.ConnectionTimeout) * time.Second),
+	}
+	if len(unaryInterceptors) != 0 {
+		options = append(options, grpc.ChainUnaryInterceptor(unaryInterceptors...))
+	}
+	if len(streamInterceptors) != 0 {
+		options = append(options, grpc.ChainStreamInterceptor(streamInterceptors...))
+	}
+
+	s := grpc.NewServer(options...)
 
 	healthcheck := health.NewServer()
 	healthcheck.SetServingStatus(c.ServiceName, healthpb.HealthCheckResponse_SERVING)
 	healthpb.RegisterHealthServer(s, healthcheck)
 
 	regiser(s)
+
 	go func() {
 		if err = s.Serve(lis); err != nil {
 			errFunc(err)
