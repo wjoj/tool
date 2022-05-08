@@ -13,6 +13,9 @@ English | [简体中文](README-CN.md)
 * Parameter validator
 * Type conversion
 * Verify the characters、AES、DES、RSA
+* Prometheus monitoring and link tracing
+* A distributed lock
+* The log level
 
 ## SQL Where 
 * conditional statements are built quickly

@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/wjoj/tool/monitoring"
 	"github.com/wjoj/tool/trace"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -47,6 +48,7 @@ type ConfigClient struct {
 	Etcd         *ConfigEtcd
 	Auth         *Auth
 	Trace        *trace.TracerCfg
+	Prom         *monitoring.ConfigPrometheus
 }
 
 func (c *ConfigClient) BuildTarget() (string, error) {
@@ -91,12 +93,19 @@ func (c *ConfigClient) Start(connFunc func(conn *grpc.ClientConn)) (err error) {
 	clientInterceptors := []grpc.UnaryClientInterceptor{}
 	streamInterceptors := []grpc.StreamClientInterceptor{}
 	if c.Trace != nil {
-		tracer, err := trace.NewTracer(c.Trace, c.ServiceName, true)
+		tracer, err := trace.NewTracer(c.Trace, c.ServiceName)
 		if err != nil {
 			return err
 		}
 		clientInterceptors = append(clientInterceptors, trace.TracerGrpcClientUnaryInterceptor(tracer))
 		streamInterceptors = append(streamInterceptors, trace.TracerGrpcStreamClientUnaryInterceptor(tracer))
+	}
+	if c.Prom != nil {
+		if c.Prom.Namespace == "" {
+			c.Prom.Namespace = "rpc-client"
+		}
+		monitoring.RPCPrometheusStart(c.Prom)
+		clientInterceptors = append(clientInterceptors, monitoring.UnaryRPCClientPrometheusInterceptor)
 	}
 	if len(clientInterceptors) != 0 {
 		opts = append(opts, grpc.WithChainUnaryInterceptor(clientInterceptors...)) //拦截器 路由追踪 监控 断路器 控制超时链接器
@@ -123,6 +132,7 @@ type ConfigService struct {
 	Etcd              *ConfigEtcd `json:"etcd" yaml:"etcd"`
 	Auth              *Auth       `json:"auth" yaml:"auth"`
 	Trace             *trace.TracerCfg
+	Prom              *monitoring.ConfigPrometheus
 }
 
 func (c *ConfigService) Start(regiser func(srv *grpc.Server), errFunc func(err error)) {
@@ -144,7 +154,7 @@ func (c *ConfigService) Start(regiser func(srv *grpc.Server), errFunc func(err e
 	unaryInterceptors := []grpc.UnaryServerInterceptor{}
 	streamInterceptors := []grpc.StreamServerInterceptor{}
 	if c.Trace != nil {
-		tracer, err := trace.NewTracer(c.Trace, c.ServiceName, true)
+		tracer, err := trace.NewTracer(c.Trace, c.ServiceName)
 		if err != nil {
 			errFunc(err)
 			return
@@ -152,7 +162,13 @@ func (c *ConfigService) Start(regiser func(srv *grpc.Server), errFunc func(err e
 		unaryInterceptors = append(unaryInterceptors, trace.TracerGrpcServerUnaryInterceptor(tracer))
 		streamInterceptors = append(streamInterceptors, trace.TracerGrpcStreamServerUnaryInterceptor(tracer))
 	}
-
+	if c.Prom != nil {
+		if c.Prom.Namespace == "" {
+			c.Prom.Namespace = "rpc-server"
+		}
+		monitoring.RPCPrometheusStart(c.Prom)
+		unaryInterceptors = append(unaryInterceptors, monitoring.UnaryRPCServerPrometheusInterceptor)
+	}
 	options := []grpc.ServerOption{
 		grpc.ConnectionTimeout(time.Duration(c.ConnectionTimeout) * time.Second),
 	}

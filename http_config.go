@@ -6,6 +6,7 @@ import (
 
 	"github.com/wjoj/tool/db"
 	"github.com/wjoj/tool/http"
+	"github.com/wjoj/tool/log"
 	"gopkg.in/yaml.v2"
 )
 
@@ -14,6 +15,7 @@ type HTTPConfig struct {
 	Name        string          `json:"name" yaml:"name"`
 	Http        *http.HTTP      `json:"http" yaml:"http"`
 	DB          *db.Config      `json:"db" yaml:"db"`
+	Log         *log.Config     `json:"log" yaml:"log"`
 }
 
 func (c *HTTPConfig) Show() {
@@ -22,10 +24,17 @@ func (c *HTTPConfig) Show() {
 	msg += fmt.Sprintln("The Environment: " + c.Environment)
 	if c.Http != nil {
 		msg += fmt.Sprintln("" + fmt.Sprintf("HTTP Service Port: %v", c.Http.Port))
+		if c.Http.Prom != nil {
+			c.Http.Prom.Show()
+		}
+		if c.Http.Trace != nil {
+			c.Http.Trace.Show()
+		}
 	}
 	if c.DB != nil {
 		c.DB.Show()
 	}
+
 	fmt.Println(msg)
 }
 

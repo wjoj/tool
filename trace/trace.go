@@ -2,6 +2,7 @@ package trace
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -26,12 +27,22 @@ type TracerCfg struct {
 	Kafkas      []string
 }
 
-func NewTracer(cfg *TracerCfg, srvName string, isGlobal bool) (opentracing.Tracer, error) {
+func (c *TracerCfg) Show() {
+	msg := "Trace Info:"
+	msg += fmt.Sprintf("\n\tType: %v", c.Type)
+	msg += fmt.Sprintf("\n\tEndpointURL: %v", c.EndpointURL)
+	msg += fmt.Sprintf("\n\tHostURL: %v", c.HostURL)
+	msg += fmt.Sprintf("\n\tIsOpen: %v", c.IsOpen)
+	msg += fmt.Sprintf("\n\tKafkas: %v", c.Kafkas)
+	fmt.Println(msg)
+}
+
+func NewTracer(cfg *TracerCfg, srvName string) (opentracing.Tracer, error) {
 	switch cfg.Type {
 	case TracerTypeJaeger:
-		return NewJaeger(cfg, srvName, isGlobal)
+		return NewJaeger(cfg, srvName, true)
 	default:
-		return NewZikpin(cfg, srvName, isGlobal)
+		return NewZikpin(cfg, srvName, true)
 	}
 }
 
@@ -82,11 +93,21 @@ func TracerHttpFunc(req *http.Request) (opentracing.Span, context.Context) {
 	return tr, req.Context()
 }
 
-func TracerHttpMiddleware() func(gin.Context) {
+func TracerHttpGinMiddleware() func(gin.Context) {
 	return func(ctx gin.Context) {
 		span, ctxc := TracerHttpFunc(ctx.Request)
 		defer span.Finish()
 		ctx.Request = ctx.Request.WithContext(ctxc)
 		ctx.Next()
+	}
+}
+
+func TracerHttpMiddleware() func(http.Handler) http.Handler {
+	return func(h http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			span, ctxc := TracerHttpFunc(r)
+			defer span.Finish()
+			h.ServeHTTP(w, r.WithContext(ctxc))
+		})
 	}
 }

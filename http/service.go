@@ -7,13 +7,18 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/wjoj/tool/monitoring"
+	"github.com/wjoj/tool/trace"
 	"golang.org/x/sync/errgroup"
 )
 
 type HTTP struct {
+	ServiceName  string
 	Port         int           `json:"port" yaml:"port"`
 	ReadTimeout  time.Duration `json:"readTimeout" yaml:"readTimeout"`   //单位秒 0表示不超时
 	WriteTimeout time.Duration `json:"writeTimeout" yaml:"writeTimeout"` //单位秒 0表示不超时
+	Trace        *trace.TracerCfg
+	Prom         *monitoring.ConfigPrometheus `json:"prom" yaml:"prom"`
 }
 
 type Base interface {
@@ -27,6 +32,21 @@ var (
 func HTTPServer(env string, cfg *HTTP, handler http.Handler) *http.Server {
 	gin.SetMode(env)
 	http.NewServeMux()
+	if cfg.Trace != nil {
+		if len(cfg.ServiceName) == 0 {
+			cfg.ServiceName = "http-server"
+		}
+		_, err := trace.NewTracer(cfg.Trace, cfg.ServiceName)
+		if err != nil {
+			panic(err)
+		}
+	}
+	if cfg.Prom != nil {
+		if len(cfg.Prom.Namespace) == 0 {
+			cfg.Prom.Namespace = "http-server"
+		}
+		monitoring.HTTPPrometheusStart(cfg.Prom)
+	}
 	return &http.Server{
 		Addr:         fmt.Sprintf(":%v", cfg.Port),
 		Handler:      handler,

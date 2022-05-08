@@ -6,6 +6,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/wjoj/tool/db"
+	"github.com/wjoj/tool/log"
 	"github.com/wjoj/tool/rpc"
 	"gopkg.in/yaml.v2"
 )
@@ -30,6 +31,7 @@ type SetviceConfig struct {
 	Name        string             `json:"name" yaml:"name"`
 	RPC         *rpc.ConfigService `json:"rpc" yaml:"rpc"`
 	DB          *db.Config         `json:"db" yaml:"db"`
+	Log         *log.Config        `json:"log" yaml:"log"`
 }
 
 func (c *SetviceConfig) Show() {
@@ -37,6 +39,12 @@ func (c *SetviceConfig) Show() {
 	msg += "Server Name: " + c.Name
 	msg += fmt.Sprintf("\nThe Environment: %s", c.Environment)
 	msg += fmt.Sprintf("\nRPC Service Port: %v", c.RPC.Port)
+	if c.RPC.Prom != nil {
+		c.RPC.Prom.Show()
+	}
+	if c.RPC.Trace != nil {
+		c.RPC.Trace.Show()
+	}
 	if c.DB != nil {
 		c.DB.Show()
 	}
