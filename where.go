@@ -51,8 +51,9 @@ func whereStructureFuncIfs(m interface{}, tag string, funcIfs func(tag reflect.S
 	if typeIm.Kind() == reflect.Ptr {
 		typeIm = typeIm.Elem()
 	}
-	fileds := make(map[string]*whereIfs)
-	for i := 0; i < typeIm.NumField(); i++ {
+	lng := typeIm.NumField()
+	fileds := make(map[string]*whereIfs, lng)
+	for i := 0; i < lng; i++ {
 		if len(tag) == 0 {
 			continue
 		}
