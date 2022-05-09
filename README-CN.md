@@ -6,7 +6,7 @@
 
 * 构建HTTP、GPRC服务
 * 快速生成SQL条件语句
-* LRU缓存
+* LRU缓存、本地缓存
 * 过滤器有布隆、布谷
 * 唯一ID生成方式： GUID, NanoID, Snowflake, or UUID
 * Websocket
