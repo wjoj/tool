@@ -1,77 +1,82 @@
 package cache
 
-import (
-	"container/list"
+import "container/list"
+
+type (
+	Lru interface {
+		Add(key string)
+		Remove(key string)
+	}
+
+	noneLru struct{}
+
+	keyLru struct {
+		limit    int
+		evicts   *list.List
+		elements map[string]*list.Element
+		onEvict  func(key string)
+	}
 )
 
-// Value 使用Len来计算它需要多少字节
-type Value interface {
-	Len() int
+var (
+	_ Lru = &noneLru{}
+	_ Lru = &keyLru{}
+)
+
+// NewNoneLru return an empty lru implement, do not manager keys.
+// when cache have a limit of count, use this to make the flow correct
+func NewNoneLru() Lru {
+	return &noneLru{}
 }
 
-type entry struct {
-	key   string
-	value Value
-}
+func (l *noneLru) Add(key string) {}
 
-type LRU struct {
-	maxElement int64
-	nElement   int64
-	ls         *list.List
-	data       map[string]*list.Element
-	OnEvicted  func(key string, value Value)
-}
+func (l *noneLru) Remove(key string) {}
 
-func NewLRU(maxElement int64, onEvicted func(string, Value)) *LRU {
-	return &LRU{
-		maxElement: maxElement,
-		ls:         list.New(),
-		data:       make(map[string]*list.Element),
-		OnEvicted:  onEvicted,
+// NewLru return a Lru entry with least-recently-use algorithm
+func NewLru(limit int, onEvict func(key string)) Lru {
+	return &keyLru{
+		limit:    limit,
+		evicts:   list.New(),
+		elements: make(map[string]*list.Element),
+		onEvict:  onEvict,
 	}
 }
 
-//Add
-func (c *LRU) Add(key string, value Value) {
-	if ele, ok := c.data[key]; ok {
-		c.ls.MoveToFront(ele)
-		kv := ele.Value.(*entry)
-		c.nElement += int64(value.Len()) - int64(kv.value.Len())
-		kv.value = value
-	} else {
-		ele := c.ls.PushFront(&entry{key, value})
-		c.data[key] = ele
-		c.nElement += int64(len(key)) + int64(value.Len())
-	}
-	for c.maxElement != 0 && c.maxElement < c.nElement {
-		c.RemoveOldest()
+func (l *keyLru) Remove(key string) {
+	if elem, ok := l.elements[key]; ok {
+		l.removeElem(elem)
 	}
 }
 
-// Get
-func (c *LRU) Get(key string) (value Value, ok bool) {
-	if ele, ok := c.data[key]; ok {
-		c.ls.MoveToFront(ele)
-		kv := ele.Value.(*entry)
-		return kv.value, true
+func (l *keyLru) Add(key string) {
+	if v, ok := l.elements[key]; ok {
+		// 元素存在, 移至队首
+		l.evicts.MoveToFront(v)
+		return
 	}
-	return
-}
 
-func (c *LRU) RemoveOldest() {
-	ele := c.ls.Back()
-	if ele != nil {
-		c.ls.Remove(ele)
-		kv := ele.Value.(*entry)
-		delete(c.data, kv.key)
-		c.nElement -= int64(len(kv.key)) + int64(kv.value.Len())
-		if c.OnEvicted != nil {
-			c.OnEvicted(kv.key, kv.value)
-		}
+	// 新增元素
+	elem := l.evicts.PushFront(key)
+	l.elements[key] = elem
+
+	// 超出列表长度, 移除队尾元素
+	if l.evicts.Len() > l.limit {
+		l.removeOldest()
 	}
 }
 
-// Len
-func (c *LRU) Len() int {
-	return c.ls.Len()
+func (l *keyLru) removeOldest() {
+	elem := l.evicts.Back()
+	l.removeElem(elem)
+}
+
+func (l *keyLru) removeElem(e *list.Element) {
+	if e == nil {
+		return
+	}
+	l.evicts.Remove(e)
+	key := e.Value.(string)
+	delete(l.elements, key)
+	l.onEvict(key)
 }
