@@ -61,7 +61,7 @@ func (l *keyLru) Add(key string) {
 	l.elements[key] = elem
 
 	// 超出列表长度, 移除队尾元素
-	if l.evicts.Len() > l.limit {
+	if l.limit > 0 && l.evicts.Len() > l.limit {
 		l.removeOldest()
 	}
 }
