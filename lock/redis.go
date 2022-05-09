@@ -5,18 +5,18 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/go-redis/redis"
+	"github.com/go-redis/redis/v8"
 )
 
 type RedisClient interface {
-	SetNX(key string, value interface{}, expiration time.Duration) *redis.BoolCmd
-	Expire(key string, expiration time.Duration) *redis.BoolCmd
-	Subscribe(channels ...string) *redis.PubSub
-	Publish(channel string, message interface{}) *redis.IntCmd
-	Eval(script string, keys []string, args ...interface{}) *redis.Cmd
-	EvalSha(sha1 string, keys []string, args ...interface{}) *redis.Cmd
-	ScriptExists(hashes ...string) *redis.BoolSliceCmd
-	ScriptLoad(script string) *redis.StringCmd
+	SetNX(ctx context.Context, key string, value interface{}, expiration time.Duration) *redis.BoolCmd
+	Expire(ctx context.Context, key string, expiration time.Duration) *redis.BoolCmd
+	Subscribe(ctx context.Context, channels ...string) *redis.PubSub
+	Publish(ctx context.Context, channel string, message interface{}) *redis.IntCmd
+	Eval(ctx context.Context, script string, keys []string, args ...interface{}) *redis.Cmd
+	EvalSha(ctx context.Context, sha1 string, keys []string, args ...interface{}) *redis.Cmd
+	ScriptExists(ctx context.Context, hashes ...string) *redis.BoolSliceCmd
+	ScriptLoad(ctx context.Context, script string) *redis.StringCmd
 }
 
 func NewRedis() *redis.Client {
@@ -27,7 +27,7 @@ func NewRedis() *redis.Client {
 	})
 	// clis := redis.NewClusterClient(&redis.ClusterOptions{})
 
-	_, err := red.Ping().Result()
+	_, err := red.Ping(context.Background()).Result()
 	if err != nil {
 
 	}
@@ -57,7 +57,7 @@ func (r *RedisLock) contract(ctx context.Context) {
 		for {
 			select {
 			case <-ticker.C:
-				r.cli.Expire(r.key, r.expiration)
+				r.cli.Expire(context.Background(), r.key, r.expiration)
 			case <-ctx.Done():
 				ticker.Stop()
 				return
@@ -67,7 +67,7 @@ func (r *RedisLock) contract(ctx context.Context) {
 }
 
 func (r *RedisLock) TryLock() (bool, error) {
-	is, err := r.cli.SetNX(r.key, r.value, r.expiration).Result()
+	is, err := r.cli.SetNX(context.Background(), r.key, r.value, r.expiration).Result()
 	if err != nil {
 		return false, err
 	}
@@ -80,8 +80,8 @@ func (r *RedisLock) TryLock() (bool, error) {
 }
 
 func (r *RedisLock) subscribe() error {
-	sub := r.cli.Subscribe(subPubTopic(r.key))
-	_, err := sub.Receive()
+	sub := r.cli.Subscribe(context.Background(), subPubTopic(r.key))
+	_, err := sub.Receive(context.Background())
 	if err != nil {
 		return err
 	}
@@ -91,8 +91,8 @@ func (r *RedisLock) subscribe() error {
 
 func (r *RedisLock) subscribeWithTimeout(d time.Duration) error {
 	timeNow := time.Now()
-	pubSub := r.cli.Subscribe(subPubTopic(r.key))
-	_, err := pubSub.ReceiveTimeout(d)
+	pubSub := r.cli.Subscribe(context.Background(), subPubTopic(r.key))
+	_, err := pubSub.ReceiveTimeout(context.Background(), d)
 	if err != nil {
 		return err
 	}
@@ -106,7 +106,7 @@ func (r *RedisLock) subscribeWithTimeout(d time.Duration) error {
 }
 
 func (r *RedisLock) publish() error {
-	err := r.cli.Publish(subPubTopic(r.key), "release").Err()
+	err := r.cli.Publish(context.Background(), subPubTopic(r.key), "release").Err()
 	if err != nil {
 		return err
 	}
@@ -160,7 +160,7 @@ func (r *RedisLock) LockSpin(spin int) error {
 
 func (r *RedisLock) Unlock() error {
 	script := redis.NewScript(fmt.Sprintf(`if redis.call("get", KEYS[1]) == "%v" then return redis.call("del", KEYS[1]) else return 0 end`, r.value))
-	res, err := script.Run(r.cli, []string{r.key}).Result()
+	res, err := script.Run(context.Background(), r.cli, []string{r.key}).Result()
 	if err != nil {
 		return err
 	}

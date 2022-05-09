@@ -16,6 +16,7 @@ English | [简体中文](README-CN.md)
 * Prometheus monitoring and link tracing
 * A distributed lock
 * The log level
+* Current limiter
 
 ## SQL Where 
 * conditional statements are built quickly

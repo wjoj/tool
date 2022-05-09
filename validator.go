@@ -8,10 +8,10 @@ import (
 	"github.com/go-playground/locales/zh"
 	"github.com/go-playground/locales/zh_Hant_TW"
 	ut "github.com/go-playground/universal-translator"
-	validator "gopkg.in/go-playground/validator.v9"
-	en_translations "gopkg.in/go-playground/validator.v9/translations/en"
-	zh_translations "gopkg.in/go-playground/validator.v9/translations/zh"
-	zh_tw_translations "gopkg.in/go-playground/validator.v9/translations/zh_tw"
+	validator "github.com/go-playground/validator/v10"
+	en_translations "github.com/go-playground/validator/v10/translations/en"
+	zh_translations "github.com/go-playground/validator/v10/translations/zh"
+	zh_tw_translations "github.com/go-playground/validator/v10/translations/zh_tw"
 )
 
 const (
@@ -38,10 +38,8 @@ func LoadValidator() (*validator.Validate, *ut.UniversalTranslator, ut.Translato
 
 	case ValidatorLocaleZhTw:
 		zh_tw_translations.RegisterDefaultTranslations(valir, trans)
-
 	default:
 		zh_translations.RegisterDefaultTranslations(valir, trans)
-
 	}
 
 	valir.RegisterTranslation("required", trans, func(ut ut.Translator) error {

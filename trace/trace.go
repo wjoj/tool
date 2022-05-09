@@ -79,13 +79,13 @@ func GlobalTracerGrpcFunc(ctx context.Context, funcName string) opentracing.Span
 
 func TracerHttpFunc(req *http.Request) (opentracing.Span, context.Context) {
 	if tracer := opentracing.GlobalTracer(); tracer != nil {
+		var span opentracing.Span
 		ctx, err := tracer.Extract(opentracing.HTTPHeaders, opentracing.HTTPHeadersCarrier(req.Header))
 		if err != nil {
-			tr := new(tracerSpanEmpty)
-			return tr, req.Context()
+			span = tracer.StartSpan(req.URL.Path)
+		} else {
+			span = tracer.StartSpan(req.URL.Path, ext.RPCServerOption(ctx))
 		}
-
-		span := tracer.StartSpan(req.RequestURI, ext.RPCServerOption(ctx))
 		ctxc := opentracing.ContextWithSpan(req.Context(), span)
 		return span, ctxc
 	}

@@ -44,7 +44,10 @@ func (q *Queue) Link(item interface{}, fnTask func(item interface{}) interface{}
 		}
 		data := fnTask(s)
 		select {
-		case item := <-q.queueLink:
+		case item, ok := <-q.queueLink:
+			if !ok {
+				return
+			}
 			fnOver(item, data, QueueCodeTypeSuccess)
 			return
 		case <-time.After(q.timeout):
@@ -52,4 +55,8 @@ func (q *Queue) Link(item interface{}, fnTask func(item interface{}) interface{}
 			return
 		}
 	}(item)
+}
+
+func (q *Queue) Close() {
+	close(q.queueLink)
 }
