@@ -104,8 +104,7 @@ func (c *ConfigClient) Start(connFunc func(conn *grpc.ClientConn)) (err error) {
 		if c.Prom.Namespace == "" {
 			c.Prom.Namespace = "rpc-client"
 		}
-		monitoring.RPCPrometheusStart(c.Prom)
-		clientInterceptors = append(clientInterceptors, monitoring.UnaryRPCClientPrometheusInterceptor)
+		clientInterceptors = append(clientInterceptors, monitoring.UnaryRPCClientPrometheusInterceptor(monitoring.RPCPrometheusStart(c.Prom)))
 	}
 	if len(clientInterceptors) != 0 {
 		opts = append(opts, grpc.WithChainUnaryInterceptor(clientInterceptors...)) //拦截器 路由追踪 监控 断路器 控制超时链接器
@@ -166,8 +165,7 @@ func (c *ConfigService) Start(regiser func(srv *grpc.Server), errFunc func(err e
 		if c.Prom.Namespace == "" {
 			c.Prom.Namespace = "rpc-server"
 		}
-		monitoring.RPCPrometheusStart(c.Prom)
-		unaryInterceptors = append(unaryInterceptors, monitoring.UnaryRPCServerPrometheusInterceptor)
+		unaryInterceptors = append(unaryInterceptors, monitoring.UnaryRPCServerPrometheusInterceptor(monitoring.RPCPrometheusStart(c.Prom)))
 	}
 	options := []grpc.ServerOption{
 		grpc.ConnectionTimeout(time.Duration(c.ConnectionTimeout) * time.Second),

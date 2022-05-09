@@ -50,7 +50,6 @@ type p2cPickBuilder struct {
 }
 
 func (p *p2cPickBuilder) Build(info base.PickerBuildInfo) balancer.Picker {
-	logger.Printf("p2cPickBuilder: Build called with info: %v", info)
 	if len(info.ReadySCs) == 0 {
 		return base.NewErrPicker(balancer.ErrNoSubConnAvailable)
 	}

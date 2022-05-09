@@ -44,7 +44,7 @@ func SetprometheusOpen(is bool) {
 	}
 }
 
-func RPCPrometheusStart(cfg *ConfigPrometheus) {
+func RPCPrometheusStart(cfg *ConfigPrometheus) (his *prometheus.HistogramVec, c *prometheus.CounterVec) {
 	if cfg == nil {
 		return
 	}
@@ -54,38 +54,20 @@ func RPCPrometheusStart(cfg *ConfigPrometheus) {
 	if len(cfg.Path) == 0 {
 		cfg.Path = "/metrics"
 	}
-	SetPrometheusNamespace(cfg.Namespace)
-	metricRPCReqDur = NewRequestsHistogramVec()
-	metricRPCReqCodeTotal = NewRequestsCounterVec()
-	SetprometheusOpen(true)
-	http.Handle(cfg.Path, promhttp.Handler()) //默认
-	fmt.Println("" + fmt.Sprintf("Prometheus start port:%d path:%s", cfg.Port, cfg.Path))
-	if err := http.ListenAndServe(fmt.Sprintf(":%d", cfg.Port), nil); err != nil {
-		panic(fmt.Sprintf("Prometheus start error	%v", err))
-	}
+	go func() {
+		SetprometheusOpen(true)
+		http.Handle(cfg.Path, promhttp.Handler()) //默认
+		fmt.Println("" + fmt.Sprintf("Prometheus start port:%d path:%s", cfg.Port, cfg.Path))
+		if err := http.ListenAndServe(fmt.Sprintf(":%d", cfg.Port), nil); err != nil {
+			panic(fmt.Sprintf("Prometheus start error	%v", err))
+		}
+	}()
+	return NewRequestsHistogramVec(cfg.Namespace), NewRequestsCounterVec(cfg.Namespace)
 }
 
-func PrometheusStartCustom() {
-	SetprometheusOpen(true)
-	registry := prometheus.NewRegistry()
-	http.Handle("/metrics", promhttp.HandlerFor(registry, promhttp.HandlerOpts{Registry: registry}))
-	http.ListenAndServe(":8081", nil)
-}
-
-var (
-	metricRPCReqDur       *prometheus.HistogramVec
-	metricRPCReqCodeTotal *prometheus.CounterVec
-)
-
-var prometheusNamespace = ""
-
-func SetPrometheusNamespace(n string) {
-	prometheusNamespace = n
-}
-
-func NewRequestsHistogramVec() *prometheus.HistogramVec {
+func NewRequestsHistogramVec(namespace string) *prometheus.HistogramVec {
 	vec := prometheus.NewHistogramVec(prometheus.HistogramOpts{
-		Namespace: prometheusNamespace,
+		Namespace: namespace,
 		Subsystem: "requests",
 		Name:      "duration_ms",
 		Help:      "rpc server requests duration(ms).",
@@ -95,9 +77,9 @@ func NewRequestsHistogramVec() *prometheus.HistogramVec {
 	return vec
 }
 
-func NewRequestsCounterVec() *prometheus.CounterVec {
+func NewRequestsCounterVec(namespace string) *prometheus.CounterVec {
 	vec := prometheus.NewCounterVec(prometheus.CounterOpts{
-		Namespace: prometheusNamespace,
+		Namespace: namespace,
 		Subsystem: "requests",
 		Name:      "code_total",
 		Help:      "rpc server requests code count.",
@@ -106,40 +88,36 @@ func NewRequestsCounterVec() *prometheus.CounterVec {
 	return vec
 }
 
-func UnaryRPCServerPrometheusInterceptor(ctx context.Context, req interface{},
-	info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
-	if !GetPrometheusOpen() {
-		return handler(ctx, req)
+func UnaryRPCServerPrometheusInterceptor(his *prometheus.HistogramVec, ctr *prometheus.CounterVec) grpc.UnaryServerInterceptor {
+	return func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp interface{}, err error) {
+		if his == nil || ctr == nil {
+			return handler(ctx, req)
+		}
+		startTime := time.Now()
+		resp, err = handler(ctx, req)
+		his.WithLabelValues(info.FullMethod).Observe(float64(time.Since(startTime) / time.Millisecond))
+		ctr.WithLabelValues(info.FullMethod, strconv.Itoa(int(status.Code(err)))).Inc()
+		return resp, err
 	}
-
-	startTime := time.Now()
-	resp, err := handler(ctx, req)
-	metricRPCReqDur.WithLabelValues(info.FullMethod).Observe(float64(time.Since(startTime) / time.Millisecond))
-	metricRPCReqCodeTotal.WithLabelValues(info.FullMethod, strconv.Itoa(int(status.Code(err)))).Inc()
-	return resp, err
 }
 
-func UnaryRPCClientPrometheusInterceptor(ctx context.Context, method string, req, reply interface{},
-	cc *grpc.ClientConn, invoker grpc.UnaryInvoker, opts ...grpc.CallOption) error {
-	if !GetPrometheusOpen() {
-		return invoker(ctx, method, req, reply, cc, opts...)
+func UnaryRPCClientPrometheusInterceptor(his *prometheus.HistogramVec, ctr *prometheus.CounterVec) grpc.UnaryClientInterceptor {
+	return func(ctx context.Context, method string, req, reply interface{}, cc *grpc.ClientConn, invoker grpc.UnaryInvoker, opts ...grpc.CallOption) error {
+		if his == nil || ctr == nil {
+			return invoker(ctx, method, req, reply, cc, opts...)
+		}
+		startTime := time.Now()
+		err := invoker(ctx, method, req, reply, cc, opts...)
+		his.WithLabelValues(method).Observe(float64(time.Since(startTime) / time.Millisecond))
+		ctr.WithLabelValues(method, strconv.Itoa(int(status.Code(err)))).Inc()
+		return err
 	}
-	startTime := time.Now()
-	err := invoker(ctx, method, req, reply, cc, opts...)
-	metricRPCReqDur.WithLabelValues(method).Observe(float64(time.Since(startTime) / time.Millisecond))
-	metricRPCReqCodeTotal.WithLabelValues(method, strconv.Itoa(int(status.Code(err)))).Inc()
-	return err
 }
 
 //http
-var (
-	metricHttpServerReqDur       *prometheus.HistogramVec
-	metricHttpServerReqCodeTotal *prometheus.CounterVec
-)
-
-func HTTPPrometheusStart(cfg *ConfigPrometheus) {
+func HTTPPrometheusStart(cfg *ConfigPrometheus) (*prometheus.HistogramVec, *prometheus.CounterVec) {
 	if cfg == nil {
-		return
+		return nil, nil
 	}
 	if cfg.Port == 0 {
 		cfg.Port = 1000
@@ -147,13 +125,14 @@ func HTTPPrometheusStart(cfg *ConfigPrometheus) {
 	if len(cfg.Path) == 0 {
 		cfg.Path = "/metrics"
 	}
-	metricHttpServerReqDur = NewMetricHttpServerReqDur(cfg.Namespace)
-	metricHttpServerReqCodeTotal = NewMetricHttpServerReqCodeTotal(cfg.Namespace)
-	http.Handle(cfg.Path, promhttp.Handler()) //默认
-	fmt.Println("" + fmt.Sprintf("Prometheus start port:%d path:%s", cfg.Port, cfg.Path))
-	if err := http.ListenAndServe(fmt.Sprintf(":%d", cfg.Port), nil); err != nil {
-		panic(fmt.Sprintf("Prometheus start error	%v", err))
-	}
+	go func() {
+		http.Handle(cfg.Path, promhttp.Handler()) //默认
+		fmt.Println("" + fmt.Sprintf("Prometheus start port:%d path:%s", cfg.Port, cfg.Path))
+		if err := http.ListenAndServe(fmt.Sprintf(":%d", cfg.Port), nil); err != nil {
+			panic(fmt.Sprintf("Prometheus start error	%v", err))
+		}
+	}()
+	return NewMetricHttpServerReqDur(cfg.Namespace), NewMetricHttpServerReqCodeTotal(cfg.Namespace)
 }
 
 func NewMetricHttpServerReqDur(namespace string) *prometheus.HistogramVec {
@@ -170,7 +149,7 @@ func NewMetricHttpServerReqDur(namespace string) *prometheus.HistogramVec {
 
 func NewMetricHttpServerReqCodeTotal(namespace string) *prometheus.CounterVec {
 	vec := prometheus.NewCounterVec(prometheus.CounterOpts{
-		Namespace: prometheusNamespace,
+		Namespace: namespace,
 		Subsystem: "http_requests",
 		Name:      "code_total",
 		Help:      "http server requests code count.",
@@ -179,16 +158,16 @@ func NewMetricHttpServerReqCodeTotal(namespace string) *prometheus.CounterVec {
 	return vec
 }
 
-func HttpGinPrometheusMiddleware() func(gin.Context) {
+func HttpGinPrometheusMiddleware(his *prometheus.HistogramVec, ctr *prometheus.CounterVec) func(gin.Context) {
 	return func(ctx gin.Context) {
 		startTime := time.Now()
 		ctx.Next()
-		metricHttpServerReqDur.WithLabelValues(ctx.Request.RequestURI).Observe(float64(time.Since(startTime) / time.Millisecond))
-		metricHttpServerReqCodeTotal.WithLabelValues(ctx.Request.RequestURI, strconv.Itoa(ctx.Writer.Status())).Inc()
+		his.WithLabelValues(ctx.Request.RequestURI).Observe(float64(time.Since(startTime) / time.Millisecond))
+		ctr.WithLabelValues(ctx.Request.RequestURI, strconv.Itoa(ctx.Writer.Status())).Inc()
 	}
 }
 
-func HttpPrometheusMiddleware() func(http.Handler) http.Handler {
+func HttpPrometheusMiddleware(his *prometheus.HistogramVec, ctr *prometheus.CounterVec) func(http.Handler) http.Handler {
 	return func(h http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			startTime := time.Now()
@@ -196,8 +175,8 @@ func HttpPrometheusMiddleware() func(http.Handler) http.Handler {
 				Writer: w,
 			}
 			h.ServeHTTP(wcp, r)
-			metricHttpServerReqDur.WithLabelValues(r.RequestURI).Observe(float64(time.Since(startTime) / time.Millisecond))
-			metricHttpServerReqCodeTotal.WithLabelValues(r.RequestURI, strconv.Itoa(wcp.Code)).Inc()
+			his.WithLabelValues(r.RequestURI).Observe(float64(time.Since(startTime) / time.Millisecond))
+			ctr.WithLabelValues(r.RequestURI, strconv.Itoa(wcp.Code)).Inc()
 		})
 	}
 }
