@@ -6,7 +6,7 @@ English | [简体中文](README-CN.md)
 
 * Build HTTP and GRPC services
 * Quickly build SQL conditional statements
-* The LRU cache
+* The LRU cache、local cache
 * Filters include Bloom and Cuckoo
 * The unique ID can be GUID, NanoID, Snowflake, or UUID
 * The Websocket
