@@ -225,3 +225,11 @@ func NewGlobalMongo(cfg *MongoConfig) error {
 	go m.WatchConnect()
 	return nil
 }
+
+func SetGlobalMongo(mgo *Mongo) {
+	Mgo = mgo
+}
+
+func GlobalMongo() *Mongo {
+	return Mgo
+}
