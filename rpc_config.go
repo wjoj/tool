@@ -78,7 +78,3 @@ func NewServiceConfig(fpath string) (*SetviceConfig, error) {
 func DefaultServiceConfig() (*SetviceConfig, error) {
 	return NewServiceConfig("./etc/config.yaml")
 }
-
-func RPCServerStart(cfg *SetviceConfig) {
-
-}
