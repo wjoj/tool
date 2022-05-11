@@ -213,3 +213,15 @@ func (c *Collection) Aggregate(pipeline bson.D, v interface{}) error {
 func (c *Collection) Count(filter bson.D) (int64, error) {
 	return c.col.CountDocuments(context.Background(), filter)
 }
+
+var Mgo *Mongo
+
+func NewGlobalMongo(cfg *MongoConfig) error {
+	m, err := NewMongo(cfg)
+	if err != nil {
+		return err
+	}
+	Mgo = m
+	go m.WatchConnect()
+	return nil
+}
