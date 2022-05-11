@@ -3,10 +3,12 @@ package db
 import (
 	"context"
 	"fmt"
+	"reflect"
 	"sync"
 	"sync/atomic"
 	"time"
 
+	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
@@ -108,6 +110,106 @@ func (m *Mongo) Dbname(name string) *mongo.Database {
 	return db
 }
 
-func (m *Mongo) DbnameCollection(name string, col string) *mongo.Collection {
-	return m.Dbname(name).Collection(col)
+func (m *Mongo) DbnameCollection(name string, col string) *Collection {
+	return &Collection{
+		name: col,
+		col:  m.Dbname(name).Collection(col),
+	}
+}
+
+type Collection struct {
+	col  *mongo.Collection
+	name string
+}
+
+func (c *Collection) Switch(name string) *Collection {
+	return &Collection{
+		name: name,
+		col:  c.col.Database().Collection(name),
+	}
+}
+
+func (c *Collection) Collection() *mongo.Collection {
+	return c.col
+}
+
+func (c *Collection) Insert(d ...interface{}) ([]interface{}, error) {
+	if len(d) == 0 {
+		res, err := c.col.InsertOne(context.Background(), d)
+		if err != nil {
+			return nil, err
+		}
+		return []interface{}{res.InsertedID}, nil
+	} else {
+		res, err := c.col.InsertMany(context.Background(), d)
+		if err != nil {
+			return nil, err
+		}
+		return res.InsertedIDs, nil
+	}
+}
+
+func (c *Collection) Update(filter bson.M, d ...interface{}) (int64, error) {
+	if len(d) == 0 {
+		res, err := c.col.UpdateOne(context.Background(), filter, d)
+		if err != nil {
+			return 0, err
+		}
+		if res.ModifiedCount == res.UpsertedCount {
+			return res.UpsertedCount, nil
+		}
+		return res.ModifiedCount - res.UpsertedCount, nil
+	} else {
+		res, err := c.col.UpdateMany(context.Background(), filter, d)
+		if err != nil {
+			return 0, err
+		}
+		if res.ModifiedCount == res.UpsertedCount {
+			return res.UpsertedCount, nil
+		}
+		return res.ModifiedCount - res.UpsertedCount, nil
+	}
+}
+
+func (c *Collection) Delete(filter bson.M, isMany bool) error {
+	if isMany {
+		_, err := c.col.DeleteMany(context.Background(), filter)
+		if err != nil {
+			return err
+		}
+	}
+	_, err := c.col.DeleteOne(context.Background(), filter)
+	return err
+}
+
+func (c *Collection) Find(filter bson.M, v interface{}) error {
+	switch reflect.TypeOf(v).Kind() {
+	case reflect.Array, reflect.Slice:
+		cur, err := c.col.Find(context.Background(), filter)
+		if err != nil {
+			return err
+		}
+		err = cur.All(context.Background(), v)
+		if err != nil {
+			return err
+		}
+		return cur.Close(context.Background())
+	}
+	return c.col.FindOne(context.Background(), filter).Decode(v)
+}
+
+func (c *Collection) Aggregate(pipeline bson.D, v interface{}) error {
+	cur, err := c.col.Aggregate(context.Background(), pipeline)
+	if err != nil {
+		return err
+	}
+	err = cur.All(context.Background(), v)
+	if err != nil {
+		return err
+	}
+	return cur.Close(context.Background())
+}
+
+func (c *Collection) Count(filter bson.D) (int64, error) {
+	return c.col.CountDocuments(context.Background(), filter)
 }
