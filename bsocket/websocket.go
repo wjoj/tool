@@ -1,4 +1,4 @@
-package websocket
+package bsocket
 
 import (
 	"net/http"

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"reflect"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -13,6 +14,11 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
+type MongoCollection interface {
+	DBName() string
+	CollectionName() string
+}
+
 type MongoConfig struct {
 	Host          string `json:"host" yaml:"host"`
 	Port          uint   `json:"port" yaml:"port"`
@@ -21,6 +27,8 @@ type MongoConfig struct {
 	DBName        string `json:"dbname" yaml:"dbname"`
 	Timeout       int    `json:"timeout" yaml:"timeout"`             //ms
 	ReconnectTime int    `json:"reconnectTime" yaml:"reconnectTime"` //ms
+	MaxPoolSize   uint64 `json:"maxPoolSize" yaml:"maxPoolSize"`
+	MinPoolSize   uint64 `json:"minPoolSize" yaml:"minPoolSize"`
 }
 
 func (c *MongoConfig) URL() string {
@@ -33,6 +41,7 @@ type Mongo struct {
 	watch   int32
 	lock    sync.Mutex
 	dbnames map[string]*mongo.Database
+	close   chan struct{}
 }
 
 func NewMongo(cfg *MongoConfig) (*Mongo, error) {
@@ -51,6 +60,8 @@ func NewMongo(cfg *MongoConfig) (*Mongo, error) {
 	url := cfg.URL()
 	ctx, cancel := context.WithTimeout(context.Background(), time.Millisecond*time.Duration(cfg.Timeout))
 	mgo := options.Client().ApplyURI(url)
+	mgo.MinPoolSize = &cfg.MaxPoolSize
+	mgo.MinPoolSize = &cfg.MinPoolSize
 	client, err := mongo.Connect(ctx, mgo)
 	cancel()
 	if err != nil {
@@ -60,6 +71,7 @@ func NewMongo(cfg *MongoConfig) (*Mongo, error) {
 		cli:     client,
 		c:       cfg,
 		dbnames: make(map[string]*mongo.Database),
+		close:   make(chan struct{}),
 	}
 	if err := cl.Ping(); err != nil {
 		return nil, err
@@ -72,6 +84,9 @@ func (m *Mongo) Ping() error {
 }
 
 func (m *Mongo) Close() error {
+	if atomic.LoadInt32(&m.watch) == 1 {
+		m.close <- struct{}{}
+	}
 	return m.cli.Disconnect(context.Background())
 }
 
@@ -94,6 +109,9 @@ func (m *Mongo) WatchConnect() {
 		}
 		select {
 		case <-ctx.Done():
+		case <-m.close:
+			atomic.StoreInt32(&m.watch, 0)
+			return
 		}
 	}
 }
@@ -110,11 +128,19 @@ func (m *Mongo) Dbname(name string) *mongo.Database {
 	return db
 }
 
+func (m *Mongo) DbnameStructure(v MongoCollection) *mongo.Database {
+	return m.Dbname(v.DBName())
+}
+
 func (m *Mongo) DbnameCollection(name string, col string) *Collection {
 	return &Collection{
 		name: col,
 		col:  m.Dbname(name).Collection(col),
 	}
+}
+
+func (m *Mongo) DbnameCollectionStructure(v MongoCollection) *Collection {
+	return m.DbnameCollection(v.DBName(), v.CollectionName())
 }
 
 type Collection struct {
@@ -182,20 +208,39 @@ func (c *Collection) Delete(filter bson.M, isMany bool) error {
 	return err
 }
 
-func (c *Collection) Find(filter bson.M, v interface{}) error {
-	switch reflect.TypeOf(v).Kind() {
+func (c *Collection) Find(sel string, filter bson.M, offset, limit int64, out interface{}) error {
+	sels := strings.Split(sel, ",")
+	sls := make(bson.D, len(sels))
+	for _, s := range sels {
+		sls = append(sls, bson.E{Key: s, Value: 1})
+	}
+	switch reflect.TypeOf(out).Kind() {
 	case reflect.Array, reflect.Slice:
-		cur, err := c.col.Find(context.Background(), filter)
+		opts := []*options.FindOptions{}
+		if len(sls) != 0 {
+			opts = append(opts, options.Find().SetProjection(sls))
+		}
+		if limit != 0 {
+			opts = append(opts, options.Find().SetLimit(limit))
+		}
+		if offset != 0 {
+			opts = append(opts, options.Find().SetSkip(offset))
+		}
+		cur, err := c.col.Find(context.Background(), filter, opts...)
 		if err != nil {
 			return err
 		}
-		err = cur.All(context.Background(), v)
+		err = cur.All(context.Background(), out)
 		if err != nil {
 			return err
 		}
 		return cur.Close(context.Background())
 	}
-	return c.col.FindOne(context.Background(), filter).Decode(v)
+	opts := []*options.FindOneOptions{}
+	if len(sls) != 0 {
+		opts = append(opts, options.FindOne().SetProjection(sls))
+	}
+	return c.col.FindOne(context.Background(), filter, opts...).Decode(out)
 }
 
 func (c *Collection) Aggregate(pipeline bson.D, v interface{}) error {
@@ -216,7 +261,7 @@ func (c *Collection) Count(filter bson.D) (int64, error) {
 
 var Mgo *Mongo
 
-func NewGlobalMongo(cfg *MongoConfig) error {
+func LoadGlobalMongo(cfg *MongoConfig) error {
 	m, err := NewMongo(cfg)
 	if err != nil {
 		return err
