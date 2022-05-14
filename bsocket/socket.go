@@ -52,7 +52,7 @@ func getPoolBody(lng int64) *Buffer {
 	} else if lng > 1024*2 && lng <= 1024*3 {
 		return bodyPool1024o3.Get().(*Buffer)
 	} else if lng > 1024*3 && lng <= 1024*4 {
-		return bodyPool1024o3.Get().(*Buffer)
+		return bodyPool1024o4.Get().(*Buffer)
 	} else {
 		return newBuffer(lng)
 	}
@@ -67,7 +67,7 @@ func releasePoolBody(b *Buffer) {
 	} else if lng > 1024*2 && lng <= 1024*3 {
 		bodyPool1024o3.Put(b)
 	} else if lng > 1024*3 && lng <= 1024*4 {
-		bodyPool1024o3.Put(b)
+		bodyPool1024o4.Put(b)
 	}
 }
 
@@ -242,13 +242,13 @@ func LoadGlobalSocket(size int) {
 }
 
 func SetGlobalSocket(sid any, s *SocketConn) {
-	lockSocket.RLock()
-	defer lockSocket.RUnlock()
+	lockSocket.Lock()
+	defer lockSocket.Unlock()
 	globalSocket[sid] = s
 }
 
 func GetGlobalSocket(sid any) *SocketConn {
-	lockSocket.Lock()
-	defer lockSocket.Unlock()
+	lockSocket.RLock()
+	defer lockSocket.RUnlock()
 	return globalSocket[sid]
 }

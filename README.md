@@ -54,7 +54,7 @@ type Message struct {
 }
 ```
 
-server
+Server
 
 ```go
 SocketListen(899, func(s *SocketConn) error {
@@ -98,7 +98,7 @@ SocketListen(899, func(s *SocketConn) error {
 })
 ```
 
-client
+Client
 
 ```go
 for i := uint16(0); i < uint16(t.N); i++ {
