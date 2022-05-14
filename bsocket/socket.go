@@ -10,10 +10,65 @@ import (
 	"sync"
 )
 
-var bodyPool = sync.Pool{
+type Buffer struct {
+	B []byte
+}
+
+func newBuffer(size int64) *Buffer {
+	return &Buffer{
+		B: make([]byte, size),
+	}
+}
+
+var bodyPool1024 = sync.Pool{
 	New: func() any {
-		return make([]byte, 1024)
+		return newBuffer(1024)
 	},
+}
+
+var bodyPool1024o2 = sync.Pool{
+	New: func() any {
+		return newBuffer(1024 * 2)
+	},
+}
+
+var bodyPool1024o3 = sync.Pool{
+	New: func() any {
+		return newBuffer(1024 * 3)
+	},
+}
+
+var bodyPool1024o4 = sync.Pool{
+	New: func() any {
+		return newBuffer(1024 * 4)
+	},
+}
+
+func getPoolBody(lng int64) *Buffer {
+	if lng <= 1024 {
+		return bodyPool1024.Get().(*Buffer)
+	} else if lng > 1024 && lng <= 1024*2 {
+		return bodyPool1024o2.Get().(*Buffer)
+	} else if lng > 1024*2 && lng <= 1024*3 {
+		return bodyPool1024o3.Get().(*Buffer)
+	} else if lng > 1024*3 && lng <= 1024*4 {
+		return bodyPool1024o3.Get().(*Buffer)
+	} else {
+		return newBuffer(lng)
+	}
+}
+
+func releasePoolBody(b *Buffer) {
+	lng := len(b.B)
+	if lng <= 1024 {
+		bodyPool1024.Put(b)
+	} else if lng > 1024 && lng <= 1024*2 {
+		bodyPool1024o2.Put(b)
+	} else if lng > 1024*2 && lng <= 1024*3 {
+		bodyPool1024o3.Put(b)
+	} else if lng > 1024*3 && lng <= 1024*4 {
+		bodyPool1024o3.Put(b)
+	}
 }
 
 type BodyRead struct {
@@ -35,9 +90,10 @@ func (b *BodyRead) Numericals(vs ...any) error {
 }
 
 func (b *BodyRead) Body(lng int64) ([]byte, error) {
-	body := make([]byte, lng)
-	_, err := io.ReadFull(b.conn, body)
-	return body, err
+	body := getPoolBody(lng)
+	defer releasePoolBody(body)
+	_, err := io.ReadFull(b.conn, body.B[:lng])
+	return body.B[:lng], err
 }
 
 type BodyWrite struct {
