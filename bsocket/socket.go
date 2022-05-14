@@ -100,6 +100,12 @@ type BodyWrite struct {
 	w *bytes.Buffer
 }
 
+func NewBodyWrite() *BodyWrite {
+	return &BodyWrite{
+		w: new(bytes.Buffer),
+	}
+}
+
 func (b *BodyWrite) Numerical(v any) error {
 	return binary.Write(b.w, binary.BigEndian, v)
 }
@@ -150,6 +156,13 @@ func (s *SocketConn) Close() error {
 	return s.Conn.Close()
 }
 
+func (s *SocketConn) Reset(conn net.Conn) {
+	s.Conn = conn
+	s.read = &BodyRead{
+		conn: conn,
+	}
+}
+
 func NewSocketConn(c net.Conn) *SocketConn {
 	return &SocketConn{
 		Conn: c,
@@ -157,6 +170,22 @@ func NewSocketConn(c net.Conn) *SocketConn {
 			conn: c,
 		},
 	}
+}
+
+var socketPool = sync.Pool{
+	New: func() any {
+		return &SocketConn{}
+	},
+}
+
+func getSocketConn(conn net.Conn) *SocketConn {
+	s := socketPool.Get().(*SocketConn)
+	s.Reset(conn)
+	return s
+}
+
+func releaseSocketConn(s *SocketConn) {
+	socketPool.Put(s)
 }
 
 func SocketListen(port int, sFunc func(s *SocketConn) error) error {
@@ -170,15 +199,39 @@ func SocketListen(port int, sFunc func(s *SocketConn) error) error {
 			return err
 		}
 		go func(s *SocketConn) {
-			defer s.Close()
+			defer func() {
+				s.Close()
+				releaseSocketConn(s)
+			}()
 			for {
 				err := sFunc(s)
 				if err != nil {
 					break
 				}
 			}
-		}(NewSocketConn(conn))
+		}(getSocketConn(conn))
 	}
+}
+
+func SocketClient(host string, sFunc func(s *SocketConn) error) error {
+	conn, err := net.Dial("tcp", host)
+	if err != nil {
+		return err
+	}
+	go func(s *SocketConn) {
+		defer func() {
+			s.Close()
+			releaseSocketConn(s)
+		}()
+		for {
+			err := sFunc(s)
+			if err != nil {
+				break
+			}
+		}
+	}(getSocketConn(conn))
+
+	return nil
 }
 
 var globalSocket = make(map[any]*SocketConn)
