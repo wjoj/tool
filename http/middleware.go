@@ -67,7 +67,8 @@ func MiddlewareCross(h *Headers) func(gin.Context) {
 			})
 		}
 		if ctx.Request.Method == http.MethodOptions {
-			ctx.Status(http.StatusNoContent)
+			ctx.AbortWithStatus(http.StatusNoContent)
+			return
 		}
 		ctx.Next()
 	}
