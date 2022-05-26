@@ -54,11 +54,13 @@ func (j *Jwt) ParseToken(token string) (jwt.MapClaims, error) {
 	return nil, errors.New("token fail")
 }
 
-type JwtUser struct {
+type JwtInfo struct {
 	Jwt
 }
 
-func JwtGinParseToken(j *JwtUser) func(g *gin.Context) {
+var jwtMapClaims = "jwtMapClaims"
+
+func JwtGinParseToken(j *JwtInfo) func(g *gin.Context) {
 	return func(g *gin.Context) {
 		token := g.GetHeader(Authorization)
 		if len(token) == 0 {
@@ -70,13 +72,15 @@ func JwtGinParseToken(j *JwtUser) func(g *gin.Context) {
 			g.AbortWithError(int(http.StatusUnauthorized), err)
 			return
 		}
-		key := "userId"
-		userId, is := clm[key]
-		if !is {
-			g.AbortWithError(int(http.StatusUnauthorized), errors.New("userId field does not exist"))
-			return
-		}
-		g.Request = g.Request.WithContext(context.WithValue(g.Request.Context(), &key, userId))
+		g.Request = g.Request.WithContext(context.WithValue(g.Request.Context(), &jwtMapClaims, clm))
 		g.Next()
 	}
+}
+
+func JwtGinMapClaims(g *gin.Context) map[string]interface{} {
+	val, is := g.Request.Context().Value(&jwtMapClaims).(map[string]interface{})
+	if !is {
+		return nil
+	}
+	return val
 }
