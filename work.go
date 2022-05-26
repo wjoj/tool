@@ -82,3 +82,16 @@ func DoTraverseSyncQueueWait(lng int, qNumber int, sF func(idx int) any, outF fu
 		send()
 	}
 }
+
+func pcall(fn func()) {
+	defer func() {
+		if err := recover(); err != nil {
+
+		}
+	}()
+	fn()
+}
+
+func AsyncDone(fn func()) {
+	go pcall(fn)
+}

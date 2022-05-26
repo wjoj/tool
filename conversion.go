@@ -1,7 +1,9 @@
 package tool
 
 import (
+	"bytes"
 	"encoding/base64"
+	"encoding/binary"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -155,11 +157,11 @@ func ToBase64Decode(base64s string) ([]byte, error) {
 	return base64.StdEncoding.DecodeString(base64s)
 }
 
-func ToURLEncoding(str string) string {
+func ToBase64URLEncoding(str string) string {
 	return base64.URLEncoding.EncodeToString([]byte(str))
 }
 
-func ToURLDecode(str string) ([]byte, error) {
+func ToBase64URLDecode(str string) ([]byte, error) {
 	return base64.URLEncoding.DecodeString(str)
 }
 
@@ -182,4 +184,26 @@ func ToJointFunc(sep string, lng int, sF func(index int) string) string {
 		}
 	}
 	return str.String()
+}
+
+func ToBytesNs(v ...any) ([]byte, error) {
+	buff := new(bytes.Buffer)
+	for _, vc := range v {
+		err := binary.Write(buff, binary.BigEndian, vc)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return buff.Bytes(), nil
+}
+
+func ToNsBytes(b []byte, v ...any) error {
+	buff := bytes.NewBuffer(b)
+	for _, vc := range v {
+		err := binary.Read(buff, binary.BigEndian, vc)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
