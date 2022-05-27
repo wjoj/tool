@@ -45,14 +45,20 @@ func ToString(value interface{}) string {
 		return strconv.FormatFloat(float64(v), 'f', 0, 64)
 	case reflect.Float32:
 		return strconv.FormatFloat(float64(v), 'f', 0, 32)
-	case reflect.Array, reflect.Map,
-		reflect.Struct, reflect.Slice:
+	case reflect.Array, reflect.Slice:
+		switch value := value.(type) {
+		case []byte:
+			return ToStringByBytes(value)
+		}
+		fallthrough
+	case reflect.Map, reflect.Struct:
 		bt, errors := json.Marshal(value)
 		if errors != nil {
 			return errors.Error()
 		} else {
-			return string(bt)
+			return ToStringByBytes(bt)
 		}
+
 	default:
 		return fmt.Sprintf("%v", value)
 	}
@@ -73,6 +79,23 @@ func ToInt(value interface{}) int {
 		number, _ = strconv.Atoi(string(v))
 	default:
 		number = 0
+	}
+	return number
+}
+
+func ToInt64(num interface{}) int64 {
+	var number int64
+	switch num := num.(type) {
+	case int:
+		number = int64(num)
+	case float64:
+		number = int64(num)
+	case float32:
+		number = int64(num)
+	case string:
+		number, _ = strconv.ParseInt(num, 10, 64)
+	case interface{}:
+		number, _ = strconv.ParseInt(fmt.Sprintf("%v", num), 10, 64)
 	}
 	return number
 }

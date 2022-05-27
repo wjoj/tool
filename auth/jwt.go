@@ -54,13 +54,9 @@ func (j *Jwt) ParseToken(token string) (jwt.MapClaims, error) {
 	return nil, errors.New("token fail")
 }
 
-type JwtInfo struct {
-	Jwt
-}
-
 var jwtMapClaims = "jwtMapClaims"
 
-func JwtGinParseToken(j *JwtInfo) func(g *gin.Context) {
+func JwtGinParseToken(j *Jwt) func(g *gin.Context) {
 	return func(g *gin.Context) {
 		token := g.GetHeader(Authorization)
 		if len(token) == 0 {
