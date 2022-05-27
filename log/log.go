@@ -3,6 +3,7 @@ package log
 import (
 	"io"
 	"os"
+	"strings"
 	"sync"
 
 	"github.com/natefinch/lumberjack"
@@ -10,8 +11,30 @@ import (
 	"go.uber.org/zap/zapcore"
 )
 
+type LevelType string
+
+func (t LevelType) ZapLevel() zapcore.Level {
+	t = LevelType(strings.ToLower(string(t)))
+	if t == "debug" {
+		return zapcore.DebugLevel
+	} else if t == "info" {
+		return zapcore.InfoLevel
+	} else if t == "warn" {
+		return zapcore.WarnLevel
+	} else if t == "error" {
+		return zapcore.ErrorLevel
+	} else if t == "dpanic" {
+		return zapcore.DPanicLevel
+	} else if t == "panic" {
+		return zapcore.PanicLevel
+	} else if t == "fatal" {
+		return zapcore.FatalLevel
+	}
+	return zapcore.DebugLevel
+}
+
 type Config struct {
-	Level      string
+	Level      LevelType
 	Path       string
 	MaxSize    int  // 在进行切割之前，日志文件的最大大小（以MB为单位）
 	MaxBackups int  // 保留旧文件的最大个数
@@ -38,7 +61,7 @@ func New(cfg *Config) *zap.Logger {
 	enccfg.EncodeLevel = zapcore.CapitalLevelEncoder
 	enc := zapcore.NewJSONEncoder(enccfg)
 	core := zapcore.NewCore(enc,
-		zapcore.AddSync(file), zapcore.DebugLevel)
+		zapcore.AddSync(file), cfg.Level.ZapLevel())
 	ler := zap.New(core, zap.AddCaller(), zap.Development())
 	logsugared = ler.Sugar()
 	return ler

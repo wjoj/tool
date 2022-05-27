@@ -8,7 +8,9 @@ import (
 	"github.com/wjoj/tool/db"
 	"github.com/wjoj/tool/log"
 	"github.com/wjoj/tool/rpc"
+	"google.golang.org/grpc"
 	"gopkg.in/yaml.v2"
+	"gorm.io/gorm"
 )
 
 type EnvironmentType string
@@ -26,7 +28,7 @@ func (e EnvironmentType) GinMode() string {
 	return gin.ReleaseMode
 }
 
-type SetviceConfig struct {
+type RPCServiceConfig struct {
 	Environment EnvironmentType    `json:"environment" yaml:"environment"`
 	Name        string             `json:"name" yaml:"name"`
 	RPC         *rpc.ConfigService `json:"rpc" yaml:"rpc"`
@@ -34,7 +36,7 @@ type SetviceConfig struct {
 	Log         *log.Config        `json:"log" yaml:"log"`
 }
 
-func (c *SetviceConfig) Show() {
+func (c *RPCServiceConfig) Show() {
 	msg := ""
 	msg += "Server Name: " + c.Name
 	msg += fmt.Sprintf("\nThe Environment: %s", c.Environment)
@@ -51,12 +53,12 @@ func (c *SetviceConfig) Show() {
 	fmt.Println(msg)
 }
 
-func NewServiceConfig(fpath string) (*SetviceConfig, error) {
+func NewServiceConfig(fpath string) (*RPCServiceConfig, error) {
 	yamlFile, err := ioutil.ReadFile(fpath)
 	if err != nil {
 		return nil, err
 	}
-	var conf SetviceConfig
+	var conf RPCServiceConfig
 	err = yaml.Unmarshal(yamlFile, &conf)
 	if err != nil {
 		return nil, fmt.Errorf("error reading configuration file, %v", err)
@@ -75,6 +77,23 @@ func NewServiceConfig(fpath string) (*SetviceConfig, error) {
 	return &conf, nil
 }
 
-func DefaultServiceConfig() (*SetviceConfig, error) {
+func DefaultServiceConfig() (*RPCServiceConfig, error) {
 	return NewServiceConfig("./etc/config.yaml")
+}
+
+func ServiceRPCStart(cfg *RPCServiceConfig, dbFunc func(dbm *gorm.DB), sFunc func(srv *grpc.Server)) {
+	cfg.Show()
+	if db, err := cfg.DB.StartDB(); err != nil {
+		panic(fmt.Errorf("db error: %v", err))
+	} else if db != nil {
+		dbFunc(db)
+	}
+	if cfg.Log != nil {
+		log.NewGlobal(cfg.Log)
+	}
+	cfg.RPC.Start(func(srv *grpc.Server) {
+		sFunc(srv)
+	}, func(err error) {
+		panic(fmt.Errorf("rpc service error: %v", err))
+	})
 }

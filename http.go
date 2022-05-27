@@ -3,11 +3,13 @@ package tool
 import (
 	"fmt"
 	"io/ioutil"
+	httph "net/http"
 
 	"github.com/wjoj/tool/db"
 	"github.com/wjoj/tool/http"
 	"github.com/wjoj/tool/log"
 	"gopkg.in/yaml.v2"
+	"gorm.io/gorm"
 )
 
 type HTTPConfig struct {
@@ -56,4 +58,16 @@ func NewHTTPConfig(fpath string) (*HTTPConfig, error) {
 
 func DefaultHTTPConfig() (*HTTPConfig, error) {
 	return NewHTTPConfig("./etc/config.yaml")
+}
+
+func ServiceHTTPStart(cfg *HTTPConfig, dbFunc func(dbm *gorm.DB), handler httph.Handler) {
+	cfg.Show()
+	if db, err := cfg.DB.StartDB(); err != nil {
+		panic(fmt.Errorf("db error: %v", err))
+	} else if db != nil {
+		dbFunc(db)
+	}
+	cfg.Http.Start(func(err error) {
+		panic(fmt.Errorf("http service error: %v", err))
+	}, handler)
 }

@@ -29,8 +29,7 @@ var (
 	g errgroup.Group
 )
 
-func HTTPServer(env string, cfg *HTTP, handler http.Handler) *http.Server {
-	gin.SetMode(env)
+func HTTPServer(cfg *HTTP, handler http.Handler) *http.Server {
 	http.NewServeMux()
 	if cfg.Trace != nil {
 		if len(cfg.ServiceName) == 0 {
@@ -73,7 +72,7 @@ func HTTPDone(errfunc func(err error), srvs ...*http.Server) {
 	}()
 }
 
-func (c *HTTP) Start(env string, errfunc func(err error), handler http.Handler) {
+func (c *HTTP) Start(errfunc func(err error), handler http.Handler) {
 	if c == nil {
 		errfunc(errors.New("the HTTP service configuration is empty"))
 		return
@@ -81,5 +80,5 @@ func (c *HTTP) Start(env string, errfunc func(err error), handler http.Handler) 
 	if c.Port == 0 {
 		c.Port = 8080
 	}
-	HTTPDone(errfunc, HTTPServer(env, c, handler))
+	HTTPDone(errfunc, HTTPServer(c, handler))
 }
