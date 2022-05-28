@@ -55,7 +55,7 @@ func ReadYaml(fpath string, v any) error {
 	if err != nil {
 		return err
 	}
-	err = yaml.Unmarshal(yamlFile, &v)
+	err = yaml.Unmarshal(yamlFile, v)
 	if err != nil {
 		return fmt.Errorf("error reading yaml file, %v", err)
 	}

@@ -37,3 +37,13 @@ func (b *BitMap) IsSet(pos uint64) bool {
 	}
 	return false
 }
+
+func (b *BitMap) Sort() (ret []uint64) {
+	ret = make([]uint64, 0)
+	for i := uint64(0); i < b.size; i++ {
+		if b.IsSet(i) {
+			ret = append(ret, i)
+		}
+	}
+	return
+}

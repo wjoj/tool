@@ -195,6 +195,7 @@ func ToJoint(sep string, s ...string) string {
 
 func ToJointFunc(sep string, lng int, sF func(index int) string) string {
 	var str strings.Builder
+
 	for i := 0; i < lng; i++ {
 		s := sF(i)
 		if len(s) == 0 {
