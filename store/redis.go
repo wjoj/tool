@@ -63,3 +63,18 @@ func NewRedis(cfg *ConfigRedis) (RedisClient, error) {
 	}
 	return cli, nil
 }
+
+var Redis RedisClient
+
+func SetGlobalRedis(cfg *ConfigRedis) error {
+	cli, err := NewRedis(cfg)
+	if err != nil {
+		return err
+	}
+	Redis = cli
+	return nil
+}
+
+func GlobalRedis() RedisClient {
+	return Redis
+}

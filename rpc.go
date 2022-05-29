@@ -8,6 +8,7 @@ import (
 	"github.com/wjoj/tool/db"
 	"github.com/wjoj/tool/log"
 	"github.com/wjoj/tool/rpc"
+	"github.com/wjoj/tool/store"
 	"google.golang.org/grpc"
 	"gopkg.in/yaml.v2"
 	"gorm.io/gorm"
@@ -33,6 +34,7 @@ type RPCServiceConfig struct {
 	Name        string             `json:"name" yaml:"name"`
 	RPC         *rpc.ConfigService `json:"rpc" yaml:"rpc"`
 	DB          *db.Config         `json:"db" yaml:"db"`
+	Redis       *store.ConfigRedis `json:"redis" yaml:"redis"`
 	Log         *log.Config        `json:"log" yaml:"log"`
 }
 
@@ -49,6 +51,9 @@ func (c *RPCServiceConfig) Show() {
 	}
 	if c.DB != nil {
 		c.DB.Show()
+	}
+	if c.Redis != nil {
+		msg += fmt.Sprintln(c.Redis)
 	}
 	fmt.Println(msg)
 }
@@ -90,6 +95,9 @@ func ServiceRPCStart(cfg *RPCServiceConfig, dbFunc func(dbm *gorm.DB), sFunc fun
 	}
 	if cfg.Log != nil {
 		log.NewGlobal(cfg.Log)
+	}
+	if err := store.SetGlobalRedis(cfg.Redis); err != nil {
+		panic(fmt.Errorf("redis error: %v", err))
 	}
 	cfg.RPC.Start(func(srv *grpc.Server) {
 		sFunc(srv)

@@ -8,16 +8,18 @@ import (
 	"github.com/wjoj/tool/db"
 	"github.com/wjoj/tool/http"
 	"github.com/wjoj/tool/log"
+	"github.com/wjoj/tool/store"
 	"gopkg.in/yaml.v2"
 	"gorm.io/gorm"
 )
 
 type HTTPConfig struct {
-	Environment EnvironmentType `json:"environment" yaml:"environment"`
-	Name        string          `json:"name" yaml:"name"`
-	Http        *http.HTTP      `json:"http" yaml:"http"`
-	DB          *db.Config      `json:"db" yaml:"db"`
-	Log         *log.Config     `json:"log" yaml:"log"`
+	Environment EnvironmentType    `json:"environment" yaml:"environment"`
+	Name        string             `json:"name" yaml:"name"`
+	Http        *http.HTTP         `json:"http" yaml:"http"`
+	DB          *db.Config         `json:"db" yaml:"db"`
+	Redis       *store.ConfigRedis `json:"redis" yaml:"redis"`
+	Log         *log.Config        `json:"log" yaml:"log"`
 }
 
 func (c *HTTPConfig) Show() {
@@ -36,7 +38,9 @@ func (c *HTTPConfig) Show() {
 	if c.DB != nil {
 		msg += fmt.Sprintln(c.DB)
 	}
-
+	if c.Redis != nil {
+		msg += fmt.Sprintln(c.Redis)
+	}
 	fmt.Println(msg)
 }
 
@@ -66,6 +70,9 @@ func ServiceHTTPStart(cfg *HTTPConfig, dbFunc func(dbm *gorm.DB), handler httph.
 		panic(fmt.Errorf("db error: %v", err))
 	} else if db != nil {
 		dbFunc(db)
+	}
+	if err := store.SetGlobalRedis(cfg.Redis); err != nil {
+		panic(fmt.Errorf("redis error: %v", err))
 	}
 	cfg.Http.Start(func(err error) {
 		panic(fmt.Errorf("http service error: %v", err))
