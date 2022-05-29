@@ -22,19 +22,19 @@ type HTTPConfig struct {
 
 func (c *HTTPConfig) Show() {
 	msg := ""
-	msg += "Server Name: " + c.Name
-	msg += fmt.Sprintln("The Environment: " + c.Environment)
+	msg += fmt.Sprintln("Server Name: " + c.Name)
+	msg += fmt.Sprintln("" + fmt.Sprintf("The Environment: %s", c.Environment))
 	if c.Http != nil {
 		msg += fmt.Sprintln("" + fmt.Sprintf("HTTP Service Port: %v", c.Http.Port))
 		if c.Http.Prom != nil {
-			c.Http.Prom.Show()
+			msg += fmt.Sprintln(c.Http.Prom)
 		}
 		if c.Http.Trace != nil {
-			c.Http.Trace.Show()
+			msg += fmt.Sprintln(c.Http.Trace)
 		}
 	}
 	if c.DB != nil {
-		c.DB.Show()
+		msg += fmt.Sprintln(c.DB)
 	}
 
 	fmt.Println(msg)

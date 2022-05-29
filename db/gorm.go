@@ -48,21 +48,25 @@ type Config struct {
 	LogPath        DBLogModelType `json:"logpath" yaml:"logpath"`
 }
 
-func (c *Config) Show() {
+func (c *Config) String() string {
 	msg := ""
-	msg += fmt.Sprintf("Data storage type %s", c.Type)
-	msg += fmt.Sprintf("\nAccount: %s Password: %s", c.Account, c.Password)
-	msg += fmt.Sprintf("\nHost: " + c.Host + " Port: " + fmt.Sprintf("%d", c.Port))
-	msg += fmt.Sprintf("\nDBName: " + c.DBName)
-	msg += fmt.Sprintf("\nPool: " + fmt.Sprintf("%d Free pool: %d", c.PoolNumber, c.PoolFreeNumber))
+	msg += fmt.Sprintf("Data storage type: %s", c.Type)
+	msg += fmt.Sprintf("\n\tAccount: %s Password: %s", c.Account, c.Password)
+	msg += fmt.Sprintf("\n\tHost: " + c.Host + " Port: " + fmt.Sprintf("%d", c.Port))
+	msg += fmt.Sprintf("\n\tDBName: " + c.DBName)
+	msg += fmt.Sprintf("\n\tPool: " + fmt.Sprintf("%d Free pool: %d", c.PoolNumber, c.PoolFreeNumber))
 	if len(c.LogPath) != 0 {
 		if c.LogPath == DBLogModelTypeConsole {
-			msg += fmt.Sprintf("\nLog type %s", c.LogPath)
+			msg += fmt.Sprintf("\n\tLog type %s", c.LogPath)
 		} else {
-			msg += fmt.Sprintf("\nLog type file path: %s", c.LogPath)
+			msg += fmt.Sprintf("\n\tLog type file path: %s", c.LogPath)
 		}
 	}
-	fmt.Println(msg)
+	return msg
+}
+
+func (c *Config) Show() {
+	fmt.Println(c)
 }
 
 func (c *Config) IsDB() error {

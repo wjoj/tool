@@ -53,7 +53,7 @@ func DoTraverseSyncQueueWait(lng int, qNumber int, sF func(idx int) any, outF fu
 			revCount++
 		}
 	}
-	queue := make(chan int)
+	queue := make(chan struct{})
 	go func() {
 		i := 0
 		sum := qNumber
@@ -69,7 +69,7 @@ func DoTraverseSyncQueueWait(lng int, qNumber int, sF func(idx int) any, outF fu
 			for ; i < sum; i++ {
 				go func(idx int) {
 					lsAdd(idx, sF(idx))
-					queue <- idx
+					queue <- struct{}{}
 					que.Done()
 				}(i)
 			}

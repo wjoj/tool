@@ -27,14 +27,18 @@ type TracerCfg struct {
 	Kafkas      []string
 }
 
-func (c *TracerCfg) Show() {
+func (c *TracerCfg) String() string {
 	msg := "Trace Info:"
 	msg += fmt.Sprintf("\n\tType: %v", c.Type)
 	msg += fmt.Sprintf("\n\tEndpointURL: %v", c.EndpointURL)
 	msg += fmt.Sprintf("\n\tHostURL: %v", c.HostURL)
 	msg += fmt.Sprintf("\n\tIsOpen: %v", c.IsOpen)
 	msg += fmt.Sprintf("\n\tKafkas: %v", c.Kafkas)
-	fmt.Println(msg)
+	return msg
+}
+
+func (c *TracerCfg) Show() {
+	fmt.Println(c)
 }
 
 func NewTracer(cfg *TracerCfg, srvName string) (opentracing.Tracer, error) {

@@ -21,10 +21,12 @@ type ConfigPrometheus struct {
 	Namespace string `json:"namespace" yaml:"namespace"`
 }
 
+func (c *ConfigPrometheus) String() string {
+	return fmt.Sprintf("Prometheus port: %v path: %v namespace: %v", c.Port, c.Path, c.Namespace)
+}
+
 func (c *ConfigPrometheus) Show() {
-	msg := ""
-	msg += fmt.Sprintf("Prometheus port: %v path: %v namespace: %v", c.Port, c.Path, c.Namespace)
-	fmt.Println(msg)
+	fmt.Println(c)
 }
 
 var prometheusOpen int32

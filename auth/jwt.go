@@ -73,8 +73,8 @@ func JwtGinParseToken(j *Jwt) func(g *gin.Context) {
 	}
 }
 
-func JwtGinMapClaims(g *gin.Context) map[string]interface{} {
-	val, is := g.Request.Context().Value(&jwtMapClaims).(map[string]interface{})
+func JwtGinMapClaims(g *gin.Context) map[string]any {
+	val, is := g.Request.Context().Value(&jwtMapClaims).(map[string]any)
 	if !is {
 		return nil
 	}
