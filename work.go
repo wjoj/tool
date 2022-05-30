@@ -16,7 +16,7 @@ func DoContrary(lng int, sF func(idx int)) {
 	}
 }
 
-func DoTraverseSyncWait(lng int, sF func(idx int)) {
+func DoTraverseAsyncWait(lng int, sF func(idx int)) {
 	var w sync.WaitGroup
 	w.Add(lng)
 	for i := 0; i < lng; i++ {
@@ -28,7 +28,7 @@ func DoTraverseSyncWait(lng int, sF func(idx int)) {
 	w.Wait()
 }
 
-func DoTraverseSyncQueueWait(lng int, qNumber int, sF func(idx int) any, outF func(idx int, out any)) {
+func DoTraverseAsyncQueueWait(lng int, qNumber int, sF func(idx int) any, outF func(idx int, out any)) {
 	ls := make(map[int]any, lng)
 	var lock sync.RWMutex
 	lsAdd := func(idx int, in any) {

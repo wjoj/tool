@@ -20,6 +20,10 @@ func newBuffer(size int64) *Buffer {
 	}
 }
 
+func (b *Buffer) Reset() {
+	b.B = b.B[:0]
+}
+
 var bodyPool1024 = sync.Pool{
 	New: func() any {
 		return newBuffer(1024)
@@ -59,6 +63,7 @@ func getPoolBody(lng int64) *Buffer {
 }
 
 func releasePoolBody(b *Buffer) {
+	b.Reset()
 	lng := len(b.B)
 	if lng <= 1024 {
 		bodyPool1024.Put(b)
@@ -185,6 +190,7 @@ func getSocketConn(conn net.Conn) *SocketConn {
 }
 
 func releaseSocketConn(s *SocketConn) {
+
 	socketPool.Put(s)
 }
 
