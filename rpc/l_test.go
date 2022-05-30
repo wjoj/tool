@@ -22,8 +22,9 @@ func TestCli(t *testing.T) {
 			"127.0.0.1:5201",
 		},
 	}
-	err := cfg.Start(func(conn *grpc.ClientConn) {
-		cli := demorpc.NewHelloClient(conn)
+	err := cfg.Start(func(conn *PoolClient) {
+		c, _ := conn.Conn()
+		cli := demorpc.NewHelloClient(c.ClientConn)
 		for i := 0; i < 10; i++ {
 			req, err := cli.Info(context.Background(), &demorpc.Request{
 				Name: fmt.Sprintf("i:%+v", i),

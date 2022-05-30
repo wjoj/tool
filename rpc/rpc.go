@@ -39,16 +39,31 @@ const (
 )
 
 type ConfigClient struct {
-	ServiceName  string
-	NonBlock     bool
-	BalancerName string   ///round_robin pick_first
-	ConTimeout   int64    `json:"conTimeout" yaml:"conTimeout"`
-	Endpoints    []string `json:"endpoints" yaml:"endpoints"`
-	Target       string
-	Etcd         *ConfigEtcd
-	Auth         *Auth
-	Trace        *trace.TracerCfg
-	Prom         *monitoring.ConfigPrometheus
+	ServiceName     string                       `json:"serviceName" yaml:"serviceName"`
+	NonBlock        bool                         `json:"nonBlock" yaml:"nonBlock"`
+	BalancerName    string                       `json:"balancerName" yaml:"balancerName"` ///round_robin pick_first
+	ConTimeout      int64                        `json:"conTimeout" yaml:"conTimeout"`
+	Endpoints       []string                     `json:"endpoints" yaml:"endpoints"`
+	Target          string                       `json:"target" yaml:"target"`
+	Etcd            *ConfigEtcd                  `json:"etcd" yaml:"etcd"`
+	Auth            *Auth                        `json:"auth" yaml:"auth"`
+	Trace           *trace.TracerCfg             `json:"trace" yaml:"trace"`
+	Prom            *monitoring.ConfigPrometheus `json:"prom" yaml:"prom"`
+	PoolMax         int                          `json:"poolMax" yaml:"poolMax"`
+	PoolIdleConns   int                          `json:"poolIdleConns" yaml:"poolIdleConns"`
+	PoolIdleTimeout time.Duration                `json:"poolIdleTimeout" yaml:"poolIdleTimeout"`
+}
+
+type PoolClient struct {
+	*Pool
+}
+
+func (p *PoolClient) Conn() (*ClientConn, error) {
+	return p.Get(context.Background())
+}
+
+func (p *PoolClient) Close() {
+	p.Pool.Close()
 }
 
 func (c *ConfigClient) BuildTarget() (string, error) {
@@ -64,7 +79,7 @@ func (c *ConfigClient) BuildTarget() (string, error) {
 	return BuildDiscoverTarget(c.Etcd.Endpoints, c.Etcd.serviceName), nil
 }
 
-func (c *ConfigClient) Start(connFunc func(conn *grpc.ClientConn)) (err error) {
+func (c *ConfigClient) Start(connFunc func(conn *PoolClient)) (err error) {
 	if c.Etcd != nil {
 		discoverContainer, err = NewEtcd(c.Etcd, c.ServiceName)
 	}
@@ -115,23 +130,38 @@ func (c *ConfigClient) Start(connFunc func(conn *grpc.ClientConn)) (err error) {
 
 	timeCtx, cancel := context.WithTimeout(context.Background(), time.Second*time.Duration(c.ConTimeout))
 	defer cancel()
+	if c.PoolIdleConns > c.PoolMax {
+		err = errors.New("poolIdleConns cannot be greater than poolMax")
+		return
+	}
+	if c.PoolIdleConns == 0 {
+		c.PoolIdleConns = 1
+	}
+	if c.PoolMax == 0 {
+		c.PoolMax = 1
+	}
+	pool, err := New(func() (*grpc.ClientConn, error) {
+		return grpc.DialContext(timeCtx, target, opts...)
+	}, c.PoolIdleConns, c.PoolMax, c.PoolIdleTimeout)
 	// target = "passthrough:127.0.0.1:9520"
-	conn, err := grpc.DialContext(timeCtx, target, opts...)
+	// conn, err := grpc.DialContext(timeCtx, target, opts...)
 	if err != nil {
 		return
 	}
-	connFunc(conn)
+	connFunc(&PoolClient{
+		pool,
+	})
 	return
 }
 
 type ConfigService struct {
-	Port              int         `json:"port" yaml:"port"`
-	ServiceName       string      `json:"serviceName" yaml:"serviceName"`
-	ConnectionTimeout int         `json:"connectionTimeout" yaml:"connectionTimeout"` //s
-	Etcd              *ConfigEtcd `json:"etcd" yaml:"etcd"`
-	Auth              *Auth       `json:"auth" yaml:"auth"`
-	Trace             *trace.TracerCfg
-	Prom              *monitoring.ConfigPrometheus
+	Port              int                          `json:"port" yaml:"port"`
+	ServiceName       string                       `json:"serviceName" yaml:"serviceName"`
+	ConnectionTimeout int                          `json:"connectionTimeout" yaml:"connectionTimeout"` //s
+	Etcd              *ConfigEtcd                  `json:"etcd" yaml:"etcd"`
+	Auth              *Auth                        `json:"auth" yaml:"auth"`
+	Trace             *trace.TracerCfg             `json:"trace" yaml:"trace"`
+	Prom              *monitoring.ConfigPrometheus `json:"prom" yaml:"prom"`
 }
 
 func (c *ConfigService) Start(regiser func(srv *grpc.Server), errFunc func(err error)) {
