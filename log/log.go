@@ -43,7 +43,12 @@ type Config struct {
 }
 
 func New(cfg *Config) *zap.Logger {
+	enccfg := zap.NewProductionEncoderConfig()
+	enccfg.EncodeTime = zapcore.TimeEncoderOfLayout("2006-01-02 15:04:05") //zapcore.ISO8601TimeEncoder
+	enccfg.EncodeLevel = zapcore.CapitalLevelEncoder
+	var enc zapcore.Encoder
 	var file io.Writer
+
 	if len(cfg.Path) != 0 {
 		lumberJackLogger := &lumberjack.Logger{
 			Filename:   cfg.Path,
@@ -53,13 +58,16 @@ func New(cfg *Config) *zap.Logger {
 			Compress:   cfg.Compress,   //是否压缩/归档旧文件
 		}
 		file = lumberJackLogger
+		enc = zapcore.NewJSONEncoder(enccfg)
 	} else {
 		file = os.Stdout
+		enc = zapcore.NewConsoleEncoder(enccfg)
 	}
-	enccfg := zap.NewProductionEncoderConfig()
-	enccfg.EncodeTime = zapcore.TimeEncoderOfLayout("2006-01-02 15:04:05") //zapcore.ISO8601TimeEncoder
-	enccfg.EncodeLevel = zapcore.CapitalLevelEncoder
-	enc := zapcore.NewJSONEncoder(enccfg)
+	// enccfg := zap.NewProductionEncoderConfig()
+	// enccfg.EncodeTime = zapcore.TimeEncoderOfLayout("2006-01-02 15:04:05") //zapcore.ISO8601TimeEncoder
+	// enccfg.EncodeLevel = zapcore.CapitalLevelEncoder
+	// zapcore.NewConsoleEncoder(enccfg)
+	// enc := zapcore.NewJSONEncoder(enccfg)
 	core := zapcore.NewCore(enc,
 		zapcore.AddSync(file), cfg.Level.ZapLevel())
 	ler := zap.New(core, zap.AddCaller(), zap.Development())
