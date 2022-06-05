@@ -55,8 +55,8 @@ func (h *Headers) Iteration(f func(string, string)) {
 	}
 }
 
-func MiddlewareCross(h *Headers) func(gin.Context) {
-	return func(ctx gin.Context) {
+func MiddlewareCross(h *Headers) func(*gin.Context) {
+	return func(ctx *gin.Context) {
 		origin := ctx.Request.Header.Get("Origin")
 		if origin != "" && h != nil {
 			if !h.IsOrigin() {
