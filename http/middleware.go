@@ -11,6 +11,10 @@ type Headers struct {
 	ops map[string]string
 }
 
+func NewHeaders() *Headers {
+	return &Headers{ops: map[string]string{}}
+}
+
 func (h *Headers) AllowOrigin(o string) {
 	h.ops["Access-Control-Allow-Origin"] = o
 }

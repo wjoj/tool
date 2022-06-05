@@ -66,15 +66,23 @@ func DefaultHTTPConfig() (*HTTPConfig, error) {
 
 func ServiceHTTPStart(cfg *HTTPConfig, dbFunc func(dbm *gorm.DB), handler httph.Handler) {
 	cfg.Show()
-	if db, err := cfg.DB.StartDB(); err != nil {
-		panic(fmt.Errorf("db error: %v", err))
-	} else if db != nil {
-		dbFunc(db)
+	if cfg.DB != nil {
+		if db, err := cfg.DB.StartDB(); err != nil {
+			panic(fmt.Errorf("db error: %v", err))
+		} else if db != nil {
+			dbFunc(db)
+		}
 	}
-	if err := store.SetGlobalRedis(cfg.Redis); err != nil {
-		panic(fmt.Errorf("redis error: %v", err))
+	if cfg.Redis != nil {
+		if err := store.SetGlobalRedis(cfg.Redis); err != nil {
+			panic(fmt.Errorf("redis error: %v", err))
+		}
 	}
-	cfg.Http.Start(func(err error) {
-		panic(fmt.Errorf("http service error: %v", err))
-	}, handler)
+	if cfg.Http != nil {
+		cfg.Http.Start(func(err error) {
+			panic(fmt.Errorf("http service error: %v", err))
+		}, handler)
+	} else {
+		panic(fmt.Errorf("http service config empty"))
+	}
 }
