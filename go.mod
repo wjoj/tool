@@ -17,6 +17,7 @@ require (
 	github.com/opentracing/opentracing-go v1.2.0
 	github.com/openzipkin-contrib/zipkin-go-opentracing v0.4.5
 	github.com/openzipkin/zipkin-go v0.4.0
+	github.com/pangudashu/memcache v0.0.0-20190519054813-4e579607dcd6
 	github.com/prometheus/client_golang v1.11.1
 	github.com/samuel/go-zookeeper v0.0.0-20201211165307-7117e9ea2414
 	github.com/satori/go.uuid v1.2.0
@@ -29,6 +30,7 @@ require (
 	go.etcd.io/etcd/client/v3 v3.5.4
 	go.mongodb.org/mongo-driver v1.9.1
 	go.uber.org/zap v1.17.0
+	golang.org/x/crypto v0.0.0-20211215153901-e495a2d5b3d3
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
 	golang.org/x/time v0.0.0-20220411224347-583f2d630306
 	google.golang.org/grpc v1.46.0
@@ -114,7 +116,6 @@ require (
 	go.etcd.io/etcd/client/pkg/v3 v3.5.4 // indirect
 	go.uber.org/atomic v1.7.0 // indirect
 	go.uber.org/multierr v1.6.0 // indirect
-	golang.org/x/crypto v0.0.0-20211215153901-e495a2d5b3d3 // indirect
 	golang.org/x/net v0.0.0-20220225172249-27dd8689420f // indirect
 	golang.org/x/sys v0.0.0-20220128215802-99c3d69c2c27 // indirect
 	golang.org/x/text v0.3.7 // indirect
