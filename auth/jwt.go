@@ -36,7 +36,7 @@ func (j *Jwt) GenerateToken(m map[string]any) (string, int64, error) {
 
 func (j *Jwt) ParseToken(token string) (jwt.MapClaims, error) {
 	tokenClaims, err := jwt.ParseWithClaims(token, &jwt.MapClaims{}, func(token *jwt.Token) (interface{}, error) {
-		return j.Secret, nil
+		return []byte(j.Secret), nil
 	})
 	if err != nil {
 		return nil, err
@@ -47,9 +47,11 @@ func (j *Jwt) ParseToken(token string) (jwt.MapClaims, error) {
 	if !tokenClaims.Valid {
 		return nil, errors.New("token valid fail")
 	}
-	claims, ok := tokenClaims.Claims.(jwt.MapClaims)
-	if ok {
-		return claims, nil
+	switch v := tokenClaims.Claims.(type) {
+	case jwt.MapClaims:
+		return jwt.MapClaims(v), nil
+	case *jwt.MapClaims:
+		return *(*jwt.MapClaims)(v), nil
 	}
 	return nil, errors.New("token fail")
 }
