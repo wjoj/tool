@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 
 	"gopkg.in/yaml.v2"
@@ -59,5 +60,23 @@ func ReadYaml(fpath string, v any) error {
 	if err != nil {
 		return fmt.Errorf("error reading yaml file, %v", err)
 	}
+	return nil
+}
+
+func ReadYamls(fpath string, vs ...any) error {
+	if !IsYaml(fpath) {
+		return errors.New("the file suffix is not `.yaml `")
+	}
+	yamlFile, err := ioutil.ReadFile(fpath)
+	if err != nil {
+		return err
+	}
+	for _, v := range vs {
+		err = yaml.Unmarshal(yamlFile, v)
+		if err != nil {
+			return fmt.Errorf("error reading yaml file(%s), %v", reflect.TypeOf(v).Name(), err)
+		}
+	}
+
 	return nil
 }
