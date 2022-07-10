@@ -34,12 +34,12 @@ func (t LevelType) ZapLevel() zapcore.Level {
 }
 
 type Config struct {
-	Level      LevelType
-	Path       string
-	MaxSize    int  // 在进行切割之前，日志文件的最大大小（以MB为单位）
-	MaxBackups int  // 保留旧文件的最大个数
-	MaxAge     int  // 保留旧文件的最大天数
-	Compress   bool // 是否压缩/归档旧文件
+	Level      LevelType `json:"level" yaml:"level"`
+	Path       string    `json:"path" yaml:"path"`
+	MaxSize    int       `json:"maxSize" yaml:"maxSize"`       // 在进行切割之前，日志文件的最大大小（以MB为单位）
+	MaxBackups int       `json:"maxBackups" yaml:"maxBackups"` // 保留旧文件的最大个数
+	MaxAge     int       `json:"maxAge" yaml:"maxAge"`         // 保留旧文件的最大天数
+	Compress   bool      `json:"compress" yaml:"compress"`     // 是否压缩/归档旧文件
 }
 
 func New(cfg *Config) *zap.Logger {

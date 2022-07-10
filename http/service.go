@@ -1,6 +1,7 @@
 package http
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"net/http"
@@ -14,15 +15,20 @@ import (
 
 type HTTP struct {
 	ServiceName  string
-	Port         int           `json:"port" yaml:"port"`
-	ReadTimeout  time.Duration `json:"readTimeout" yaml:"readTimeout"`   //单位秒 0表示不超时
-	WriteTimeout time.Duration `json:"writeTimeout" yaml:"writeTimeout"` //单位秒 0表示不超时
-	Trace        *trace.TracerCfg
+	Port         int                          `json:"port" yaml:"port"`
+	ReadTimeout  time.Duration                `json:"readTimeout" yaml:"readTimeout"`   //单位秒 0表示不超时
+	WriteTimeout time.Duration                `json:"writeTimeout" yaml:"writeTimeout"` //单位秒 0表示不超时
+	Trace        *trace.TracerCfg             `json:"trace" yaml:"trace"`
 	Prom         *monitoring.ConfigPrometheus `json:"prom" yaml:"prom"`
 }
 
+type HttpHandler interface {
+	Name() string
+	Handler() any
+}
+
 type Base interface {
-	Load(g *gin.RouterGroup)
+	Load(g *gin.RouterGroup, handles ...HttpHandler)
 }
 
 var (
@@ -59,11 +65,11 @@ func HTTPDone(errfunc func(err error), srvs ...*http.Server) {
 		if srv == nil {
 			continue
 		}
-		srcCp := new(http.Server)
-		*srcCp = *srv
 		g.Go(func() error {
-			return srcCp.ListenAndServe()
+			return srv.ListenAndServe()
 		})
+
+		srv.Shutdown(context.Background())
 	}
 	go func() {
 		if err := g.Wait(); err != nil {

@@ -76,9 +76,14 @@ func JwtGinParseToken(j *Jwt) func(g *gin.Context) {
 }
 
 func JwtGinMapClaims(g *gin.Context) map[string]any {
-	val, is := g.Request.Context().Value(&jwtMapClaims).(map[string]any)
-	if !is {
-		return nil
+	cla := g.Request.Context().Value(&jwtMapClaims)
+	switch v := cla.(type) {
+	case jwt.MapClaims:
+		return jwt.MapClaims(v)
+	case *jwt.MapClaims:
+		return *(*jwt.MapClaims)(v)
+	case map[string]any:
+		return map[string]any(v)
 	}
-	return val
+	return nil
 }
