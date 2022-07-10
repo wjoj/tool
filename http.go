@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	httph "net/http"
+	"os"
 
 	"github.com/wjoj/tool/db"
 	"github.com/wjoj/tool/http"
@@ -66,6 +67,13 @@ func DefaultHTTPConfig() (*HTTPConfig, error) {
 
 func ServiceHTTPStart(cfg *HTTPConfig, dbFunc func(dbm *gorm.DB), handler httph.Handler) {
 	cfg.Show()
+	defer func() {
+		if err := recover(); err != nil {
+			fmt.Printf("http start error:\n\t%v\n", err)
+			os.Exit(1)
+			return
+		}
+	}()
 	if cfg.DB != nil {
 		if db, err := cfg.DB.StartDB(); err != nil {
 			panic(fmt.Errorf("db error: %v", err))

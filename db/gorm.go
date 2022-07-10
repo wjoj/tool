@@ -85,7 +85,7 @@ func (c *Config) OpenDB() (*gorm.DB, error) {
 
 	switch dbObj.Type {
 	case DBTypeMySQL:
-		fmt.Printf("数据库存储方式:MySQL\n")
+		// fmt.Printf("数据库存储方式:MySQL\n")
 		if len(dbObj.Account) == 0 || len(dbObj.Password) == 0 {
 			return nil, fmt.Errorf("数据库链接错误: 数据库链接的账号或密码不能为空")
 		}
@@ -100,7 +100,7 @@ func (c *Config) OpenDB() (*gorm.DB, error) {
 		})
 
 	case DBTypePostGres:
-		fmt.Printf("数据库存储方式:PostGres\n")
+		// fmt.Printf("数据库存储方式:PostGres\n")
 		if len(dbObj.Account) == 0 || len(dbObj.Password) == 0 {
 			return nil, fmt.Errorf("数据库链接错误: 数据库链接的账号或密码不能为空")
 		}
@@ -108,7 +108,7 @@ func (c *Config) OpenDB() (*gorm.DB, error) {
 			dbObj.Host, dbObj.Account, dbObj.DBName, dbObj.Password, dbObj.Port))
 
 	case DBTypeMsSQL:
-		fmt.Printf("数据库存储方式:MSSQL\n")
+		// fmt.Printf("数据库存储方式:MSSQL\n")
 		if len(dbObj.Account) == 0 || len(dbObj.Password) == 0 {
 			return nil, fmt.Errorf("数据库链接错误: 数据库链接的账号或密码不能为空")
 		}
@@ -124,7 +124,7 @@ func (c *Config) OpenDB() (*gorm.DB, error) {
 			dbObj.Host, dbObj.Port, dbObj.Account, dbObj.Password, dbObj.DBName, dbObj.TimeOut))
 
 	default:
-		fmt.Printf("数据库存储方式:SQLite\n")
+		// fmt.Printf("数据库存储方式:SQLite\n")
 		dbDSN = sqlite.Open(fmt.Sprintf("%v.db", dbObj.DBName))
 
 	}

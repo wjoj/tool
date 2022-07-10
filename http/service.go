@@ -5,6 +5,9 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -20,6 +23,7 @@ type HTTP struct {
 	WriteTimeout time.Duration                `json:"writeTimeout" yaml:"writeTimeout"` //单位秒 0表示不超时
 	Trace        *trace.TracerCfg             `json:"trace" yaml:"trace"`
 	Prom         *monitoring.ConfigPrometheus `json:"prom" yaml:"prom"`
+	IsShutdown   bool                         `json:"isShutdown" yaml:"isShutdown"`
 }
 
 type HttpHandler interface {
@@ -65,15 +69,18 @@ func HTTPDone(errfunc func(err error), srvs ...*http.Server) {
 		if srv == nil {
 			continue
 		}
+		srccp := srv
 		g.Go(func() error {
-			return srv.ListenAndServe()
+			return srccp.ListenAndServe()
 		})
-
-		srv.Shutdown(context.Background())
 	}
 	go func() {
 		if err := g.Wait(); err != nil {
-			errfunc(err)
+			if errors.Is(err, http.ErrServerClosed) {
+				return
+			} else {
+				errfunc(err)
+			}
 		}
 	}()
 }
@@ -86,5 +93,21 @@ func (c *HTTP) Start(errfunc func(err error), handler http.Handler) {
 	if c.Port == 0 {
 		c.Port = 8080
 	}
-	HTTPDone(errfunc, HTTPServer(c, handler))
+	srv := HTTPServer(c, handler)
+	HTTPDone(errfunc, srv)
+	if c.IsShutdown {
+		go func() {
+			ch := make(chan os.Signal, 1)
+			signal.Notify(ch, syscall.SIGHUP, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT, syscall.SIGUSR1, syscall.SIGUSR2)
+			<-ch
+			close(ch)
+			fmt.Println("准关闭http服务")
+			if err := srv.Shutdown(context.Background()); err != nil {
+				fmt.Println("" + fmt.Sprintf("关闭错误%v", err))
+			} else {
+				fmt.Println("已关闭http服务")
+			}
+			os.Exit(0)
+		}()
+	}
 }
