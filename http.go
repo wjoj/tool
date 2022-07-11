@@ -10,6 +10,7 @@ import (
 	"github.com/wjoj/tool/http"
 	"github.com/wjoj/tool/log"
 	"github.com/wjoj/tool/store"
+	"github.com/wjoj/tool/util"
 	"gopkg.in/yaml.v2"
 	"gorm.io/gorm"
 )
@@ -41,6 +42,10 @@ func (c *HTTPConfig) Show() {
 	}
 	if c.Redis != nil {
 		msg += fmt.Sprintln(c.Redis)
+	}
+	if c.Environment == EnvironmentTypeDebug {
+		msg += fmt.Sprintln("api docs:")
+		msg += fmt.Sprintln("\thttp://" + fmt.Sprintf("%s:%d", util.InternalIP(), c.Http.Port) + "/v1/docs/index.html")
 	}
 	fmt.Println(msg)
 }
