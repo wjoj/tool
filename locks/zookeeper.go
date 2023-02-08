@@ -1,4 +1,4 @@
-package lock
+package locks
 
 import (
 	"github.com/samuel/go-zookeeper/zk"

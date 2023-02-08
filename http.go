@@ -80,6 +80,10 @@ func ServiceHTTPStart(cfg *HTTPConfig, dbFunc func(dbm *gorm.DB), handler httph.
 		}
 	}()
 	if cfg.DB != nil {
+		if cfg.Environment == EnvironmentTypeDebug {
+			cfg.DB.Debug = true
+		}
+
 		if db, err := cfg.DB.StartDB(); err != nil {
 			panic(fmt.Errorf("db error: %v", err))
 		} else if db != nil {

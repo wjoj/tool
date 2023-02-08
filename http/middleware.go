@@ -23,7 +23,11 @@ func (h *Headers) AllowMethods(m string) {
 	h.ops["Access-Control-Allow-Methods"] = m
 }
 
-func (h *Headers) AllowHeaders(hd string) {
+func (h *Headers) AllowHeaders(m string) {
+	h.ops["Access-Control-Allow-Headers"] = m
+}
+
+func (h *Headers) AllowExposeHeaders(hd string) {
 	h.ops["Access-Control-Expose-Headers"] = hd
 }
 
@@ -39,7 +43,7 @@ func (h *Headers) AllowCredentials(is bool) {
 	}
 }
 
-//application/json,charset=UTF-8  text/plain multipart/form-data application/x-www-form-urlencoded
+// application/json,charset=UTF-8  text/plain multipart/form-data application/x-www-form-urlencoded
 func (h *Headers) ContentType(c string) {
 	h.ops["Content-Type"] = c
 }
@@ -66,8 +70,11 @@ func MiddlewareCross(h *Headers) func(*gin.Context) {
 			if !h.IsOrigin() {
 				h.AllowOrigin(origin)
 			}
+		}
+		if h != nil {
 			h.Iteration(func(s1, s2 string) {
 				ctx.Header(s1, s2)
+				ctx.Writer.Header().Set(s1, s2)
 			})
 		}
 		if ctx.Request.Method == http.MethodOptions {

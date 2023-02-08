@@ -6,6 +6,8 @@ import (
 	"os"
 	"time"
 
+	// "github.com/8treenet/gcache"
+	// "github.com/8treenet/gcache/option"
 	"github.com/wjoj/tool/base"
 	"gorm.io/driver/clickhouse"
 	"gorm.io/driver/mysql"
@@ -34,8 +36,12 @@ const (
 	DBLogModelTypeConsole = "console"
 )
 
+/*
+https://gorm.io/zh_CN/docs/models.html
+*/
 type Config struct {
 	Type           DBType         `json:"type" yaml:"type"`
+	Debug          bool           `json:"-" yaml:"-"`
 	Account        string         `json:"account" yaml:"account"`
 	Password       string         `json:"password" yaml:"password"`
 	Host           string         `json:"host" yaml:"host"`
@@ -158,6 +164,17 @@ func (c *Config) OpenDB() (*gorm.DB, error) {
 	db, err := gorm.Open(dbDSN, dbConfig)
 	if err != nil {
 		return nil, fmt.Errorf("数据库链接错误: %v", err)
+	}
+
+	// opt := option.DefaultOption{}
+	// opt.Expires = 300              //缓存时间, 默认120秒。范围30-43200
+	// opt.Level = option.LevelSearch //缓存级别，默认LevelSearch。LevelDisable:关闭缓存，LevelModel:模型缓存， LevelSearch:查询缓存
+	// opt.AsyncWrite = false         //异步缓存更新, 默认false。 insert update delete 成功后是否异步更新缓存。 ps: affected如果未0，不触发更新。
+	// opt.PenetrationSafe = false    //开启防穿透, 默认false。 ps:防击穿强制全局开启。
+
+	// gcache.AttachDB(db, &opt, &option.RedisOption{Addr: "localhost:6379"})
+	if c.Debug {
+		db = db.Debug()
 	}
 
 	dc, err := db.DB()

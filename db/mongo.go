@@ -9,6 +9,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/wjoj/tool/lock"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -31,17 +32,30 @@ type MongoConfig struct {
 	MinPoolSize   uint64 `json:"minPoolSize" yaml:"minPoolSize"`
 }
 
-func (c *MongoConfig) URL() string {
-	return fmt.Sprintf("mongodb://%s:%s@%s:%d/%s", c.User, c.Pwd, c.Host, c.Port, c.DBName)
+func (c *MongoConfig) URL() (string, error) {
+	if len(c.Pwd) != 0 && len(c.User) == 0 {
+		return "", fmt.Errorf("the mongodb account cannot be empty")
+	}
+	if len(c.Host) == 0 {
+		return "", fmt.Errorf("the mongodb host cannot be empty")
+	}
+	if c.Port == 0 {
+		c.Port = 27017
+	}
+	if len(c.User) == 0 {
+		return fmt.Sprintf("mongodb://%s:%d/%s", c.Host, c.Port, c.DBName), nil
+	}
+	return fmt.Sprintf("mongodb://%s:%s@%s:%d/%s", c.User, c.Pwd, c.Host, c.Port, c.DBName), nil
 }
 
 type Mongo struct {
-	c       *MongoConfig
-	cli     *mongo.Client
-	watch   int32
-	lock    sync.Mutex
-	dbnames map[string]*mongo.Database
-	close   chan struct{}
+	c         *MongoConfig
+	cli       *mongo.Client
+	watch     int32
+	lock      sync.Mutex
+	shareLock *lock.Share
+	dbnames   map[string]*mongo.Database
+	close     chan struct{}
 }
 
 func NewMongo(cfg *MongoConfig) (*Mongo, error) {
@@ -57,7 +71,10 @@ func NewMongo(cfg *MongoConfig) (*Mongo, error) {
 	if cfg.ReconnectTime == 0 {
 		cfg.ReconnectTime = 1000
 	}
-	url := cfg.URL()
+	url, err := cfg.URL()
+	if err != nil {
+		return nil, err
+	}
 	ctx, cancel := context.WithTimeout(context.Background(), time.Millisecond*time.Duration(cfg.Timeout))
 	mgo := options.Client().ApplyURI(url)
 	mgo.MinPoolSize = &cfg.MaxPoolSize
@@ -68,10 +85,11 @@ func NewMongo(cfg *MongoConfig) (*Mongo, error) {
 		return nil, err
 	}
 	cl := &Mongo{
-		cli:     client,
-		c:       cfg,
-		dbnames: make(map[string]*mongo.Database),
-		close:   make(chan struct{}),
+		cli:       client,
+		c:         cfg,
+		dbnames:   make(map[string]*mongo.Database),
+		close:     make(chan struct{}),
+		shareLock: lock.NewShare(),
 	}
 	if err := cl.Ping(); err != nil {
 		return nil, err
@@ -97,11 +115,11 @@ func (m *Mongo) WatchConnect() {
 	for {
 		ctx, _ := context.WithTimeout(context.Background(), time.Millisecond*time.Duration(m.c.ReconnectTime))
 		if err := m.cli.Ping(ctx, nil); err != nil {
-			fmt.Printf("\nping err:%v", err)
+			fmt.Printf("\nmongo ping err:%v", err)
 		re:
 			ctx2, cancel := context.WithTimeout(context.Background(), time.Millisecond*time.Duration(m.c.Timeout))
 			if err := m.cli.Connect(ctx2); err != nil {
-				fmt.Printf("\nConnect")
+				fmt.Printf("\n mongo connect error:%v", err)
 				goto re
 			}
 			cancel()
@@ -114,6 +132,33 @@ func (m *Mongo) WatchConnect() {
 			return
 		}
 	}
+}
+
+func (m *Mongo) AllDBs() ([]mongo.DatabaseSpecification, int64, error) {
+	data, err := m.cli.ListDatabases(context.Background(), bson.D{})
+	if err != nil {
+		return nil, 0, err
+	}
+	return data.Databases, data.TotalSize, nil
+}
+
+func (m *Mongo) IsDBExit(dbname string) error {
+	if dbMap, _, err := m.shareLock.LockWait("db_exit", func() (any, error) {
+		dbs, _, err := m.AllDBs()
+		if err != nil {
+			return nil, err
+		}
+		dbMap := make(map[string]struct{})
+		for _, dbm := range dbs {
+			dbMap[dbm.Name] = struct{}{}
+		}
+		return dbMap, nil
+	}); err != nil {
+		return err
+	} else if _, is := dbMap.(map[string]struct{})[dbname]; is {
+		return nil
+	}
+	return fmt.Errorf("the %s database does not exist", dbname)
 }
 
 func (m *Mongo) Dbname(name string) *mongo.Database {
@@ -132,10 +177,37 @@ func (m *Mongo) DbnameStructure(v MongoCollection) *mongo.Database {
 	return m.Dbname(v.DBName())
 }
 
-func (m *Mongo) DbnameCollection(name string, col string) *Collection {
+func (m *Mongo) AllDBNameCollections(dbname string, col string) ([]*mongo.CollectionSpecification, error) {
+	colls, err := m.Dbname(dbname).ListCollectionSpecifications(context.Background(), bson.D{})
+	if err != nil {
+		return nil, err
+	}
+	return colls, nil
+}
+
+func (m *Mongo) IsDBNameCollectionExit(dbname string, col string) error {
+	if collMap, _, err := m.shareLock.LockWait("key string", func() (any, error) {
+		colls, err := m.AllDBNameCollections(dbname, col)
+		if err != nil {
+			return nil, err
+		}
+		collMap := make(map[string]struct{})
+		for _, coll := range colls {
+			collMap[coll.Name] = struct{}{}
+		}
+		return collMap, nil
+	}); err != nil {
+		return err
+	} else if _, is := collMap.(map[string]struct{})[col]; is {
+		return nil
+	}
+	return fmt.Errorf("the %s collection does not exist", col)
+}
+
+func (m *Mongo) DbnameCollection(dbname string, col string) *Collection {
 	return &Collection{
 		name: col,
-		col:  m.Dbname(name).Collection(col),
+		col:  m.Dbname(dbname).Collection(col),
 	}
 }
 

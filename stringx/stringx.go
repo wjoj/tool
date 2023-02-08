@@ -2,6 +2,7 @@ package stringx
 
 import (
 	"crypto/md5"
+	"crypto/subtle"
 	"encoding/hex"
 	"fmt"
 
@@ -11,6 +12,10 @@ import (
 func PasswordEncrypt(salt, password string) string {
 	dk, _ := scrypt.Key([]byte(password), []byte(salt), 32768, 8, 1, 32)
 	return fmt.Sprintf("%x", string(dk))
+}
+
+func PasswordValidate(hashPwd1, hashPwd2 string) bool {
+	return subtle.ConstantTimeCompare([]byte(hashPwd1), []byte(hashPwd2)) == 1
 }
 
 var md5c = md5.New()
