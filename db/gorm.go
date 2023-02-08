@@ -23,11 +23,11 @@ type DBType string
 
 const (
 	DBTypeMySQL      DBType = "mysql"
-	DBTypeSQLite            = "sqlite3"
-	DBTypePostGres          = "postgres"
-	DBTypeMsSQL             = "mssql"
-	DBTypeSQLServer         = "sqlserver"
-	DBTypeClickHouse        = "clickhouse"
+	DBTypeSQLite     DBType = "sqlite3"
+	DBTypePostGres   DBType = "postgres"
+	DBTypeMsSQL      DBType = "mssql"
+	DBTypeSQLServer  DBType = "sqlserver"
+	DBTypeClickHouse DBType = "clickhouse"
 )
 
 type DBLogModelType string
