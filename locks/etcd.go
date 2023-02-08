@@ -1,1 +1,1 @@
-package lock
+package locks
