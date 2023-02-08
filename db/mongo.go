@@ -9,7 +9,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/wjoj/tool/lock"
+	"github.com/wjoj/tool/locks"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -53,7 +53,7 @@ type Mongo struct {
 	cli       *mongo.Client
 	watch     int32
 	lock      sync.Mutex
-	shareLock *lock.Share
+	shareLock *locks.Share
 	dbnames   map[string]*mongo.Database
 	close     chan struct{}
 }
@@ -89,7 +89,7 @@ func NewMongo(cfg *MongoConfig) (*Mongo, error) {
 		c:         cfg,
 		dbnames:   make(map[string]*mongo.Database),
 		close:     make(chan struct{}),
-		shareLock: lock.NewShare(),
+		shareLock: locks.NewShare(),
 	}
 	if err := cl.Ping(); err != nil {
 		return nil, err
