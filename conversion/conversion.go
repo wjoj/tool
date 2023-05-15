@@ -233,19 +233,10 @@ func ToNsBytes(b []byte, v ...any) error {
 	return nil
 }
 
-func ToBytesByString(val string) (b []byte) {
-	str := (*reflect.StringHeader)(unsafe.Pointer(&val))
-	pb := (*reflect.SliceHeader)(unsafe.Pointer(&b))
-	pb.Data = str.Data
-	pb.Len = str.Len
-	pb.Cap = str.Len
-	return
+func ToBytesByString(val string) []byte {
+	return *(*[]byte)(unsafe.Pointer(&s))
 }
 
-func ToStringByBytes(b []byte) (s string) {
-	by := (*reflect.SliceHeader)(unsafe.Pointer(&b))
-	ps := (*reflect.StringHeader)(unsafe.Pointer(&s))
-	ps.Data = by.Data
-	ps.Len = by.Len
-	return
+func ToStringByBytes(b []byte)  string {
+	return *(*string)(unsafe.Pointer(&b))
 }
