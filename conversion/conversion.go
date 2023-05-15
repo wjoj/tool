@@ -234,9 +234,9 @@ func ToNsBytes(b []byte, v ...any) error {
 }
 
 func ToBytesByString(val string) []byte {
-	return *(*[]byte)(unsafe.Pointer(&s))
+	return *(*[]byte)(unsafe.Pointer(&val))
 }
 
-func ToStringByBytes(b []byte)  string {
+func ToStringByBytes(b []byte) string {
 	return *(*string)(unsafe.Pointer(&b))
 }
