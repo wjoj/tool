@@ -16,7 +16,7 @@ import (
 
 type EnvironmentType string
 
-//EnvironmentType 环境
+// EnvironmentType 环境
 const (
 	EnvironmentTypeDebug  EnvironmentType = "debug"
 	EnvironmentTypeFormal EnvironmentType = "formal"

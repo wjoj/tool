@@ -140,6 +140,7 @@ func (c *ConfigClient) Start(connFunc func(conn *PoolClient)) (err error) {
 	if c.PoolMax == 0 {
 		c.PoolMax = 1
 	}
+
 	pool, err := New(func() (*grpc.ClientConn, error) {
 		return grpc.DialContext(timeCtx, target, opts...)
 	}, c.PoolIdleConns, c.PoolMax, c.PoolIdleTimeout)
