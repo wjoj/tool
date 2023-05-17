@@ -54,7 +54,13 @@ func HTTPServer(cfg *HTTP, handler http.Handler) *http.Server {
 		if len(cfg.Prom.Namespace) == 0 {
 			cfg.Prom.Namespace = "http-server"
 		}
-		monitoring.HTTPPrometheusStart(cfg.Prom)
+		his, ctr := monitoring.HTTPPrometheusStart(cfg.Prom)
+		switch hand := handler.(type) {
+		case *gin.Engine:
+			hand.Use(monitoring.HttpGinPrometheusMiddleware(his, ctr))
+		default:
+			panic("this type is not supported by prometheus")
+		}
 	}
 	return &http.Server{
 		Addr:         fmt.Sprintf(":%v", cfg.Port),

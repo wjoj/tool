@@ -22,7 +22,7 @@ type ConfigPrometheus struct {
 }
 
 func (c *ConfigPrometheus) String() string {
-	return fmt.Sprintf("Prometheus port: %v path: %v namespace: %v", c.Port, c.Path, c.Namespace)
+	return fmt.Sprintf("Prometheus: \n\tport: %v path: %v namespace: %v", c.Port, c.Path, c.Namespace)
 }
 
 func (c *ConfigPrometheus) Show() {
@@ -116,7 +116,7 @@ func UnaryRPCClientPrometheusInterceptor(his *prometheus.HistogramVec, ctr *prom
 	}
 }
 
-//http
+// http
 func HTTPPrometheusStart(cfg *ConfigPrometheus) (*prometheus.HistogramVec, *prometheus.CounterVec) {
 	if cfg == nil {
 		return nil, nil
@@ -129,9 +129,9 @@ func HTTPPrometheusStart(cfg *ConfigPrometheus) (*prometheus.HistogramVec, *prom
 	}
 	go func() {
 		http.Handle(cfg.Path, promhttp.Handler()) //默认
-		fmt.Println("" + fmt.Sprintf("Prometheus start port:%d path:%s", cfg.Port, cfg.Path))
+		fmt.Println("" + fmt.Sprintf("Prometheus: \n\tport:%d path:%s", cfg.Port, cfg.Path))
 		if err := http.ListenAndServe(fmt.Sprintf(":%d", cfg.Port), nil); err != nil {
-			panic(fmt.Sprintf("Prometheus start error	%v", err))
+			panic(fmt.Sprintf("Prometheus: \n\terror	%v", err))
 		}
 	}()
 	return NewMetricHttpServerReqDur(cfg.Namespace), NewMetricHttpServerReqCodeTotal(cfg.Namespace)
@@ -160,8 +160,8 @@ func NewMetricHttpServerReqCodeTotal(namespace string) *prometheus.CounterVec {
 	return vec
 }
 
-func HttpGinPrometheusMiddleware(his *prometheus.HistogramVec, ctr *prometheus.CounterVec) func(gin.Context) {
-	return func(ctx gin.Context) {
+func HttpGinPrometheusMiddleware(his *prometheus.HistogramVec, ctr *prometheus.CounterVec) func(*gin.Context) {
+	return func(ctx *gin.Context) {
 		startTime := time.Now()
 		ctx.Next()
 		his.WithLabelValues(ctx.Request.RequestURI).Observe(float64(time.Since(startTime) / time.Millisecond))

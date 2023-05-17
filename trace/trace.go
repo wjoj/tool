@@ -2,6 +2,7 @@ package trace
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 
@@ -97,13 +98,38 @@ func TracerHttpFunc(req *http.Request) (opentracing.Span, context.Context) {
 	return tr, req.Context()
 }
 
-func TracerHttpGinMiddleware() func(gin.Context) {
-	return func(ctx gin.Context) {
-		span, ctxc := TracerHttpFunc(ctx.Request)
-		defer span.Finish()
-		ctx.Request = ctx.Request.WithContext(ctxc)
-		ctx.Next()
+var traceSpanId = "traceSpanId"
+
+func TracerFromHttpGin(g *gin.Context) (opentracing.Span, error) {
+	span, is := g.Request.Context().Value(&traceSpanId).(opentracing.Span)
+	if is {
+		return span, nil
 	}
+	return nil, errors.New("span is empty")
+}
+
+func TracerHttpGinMiddleware() func(*gin.Context) {
+	return func(g *gin.Context) {
+		span, ctxc := TracerHttpFunc(g.Request)
+		defer span.Finish()
+		// spanId := ""
+		// switch spc := span.Context().(type) {
+		// case *jaeger.SpanContext:
+		// 	spanId = fmt.Sprintf("%d-%d", spc.TraceID(), spc.SpanID())
+		// case model.SpanContext:
+		// 	spanId = fmt.Sprintf("%d-%d", spc.TraceID, spc.ID)
+		// }
+		g.Request = g.Request.WithContext(context.WithValue(g.Request.WithContext(ctxc).Context(), &traceSpanId, span))
+		g.Next()
+	}
+}
+
+func TracerFromHttp(r *http.Request) (opentracing.Span, error) {
+	span, is := r.Context().Value(&traceSpanId).(opentracing.Span)
+	if is {
+		return span, nil
+	}
+	return nil, errors.New("span is empty")
 }
 
 func TracerHttpMiddleware() func(http.Handler) http.Handler {
@@ -111,7 +137,7 @@ func TracerHttpMiddleware() func(http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			span, ctxc := TracerHttpFunc(r)
 			defer span.Finish()
-			h.ServeHTTP(w, r.WithContext(ctxc))
+			h.ServeHTTP(w, r.WithContext(context.WithValue(r.WithContext(ctxc).Context(), &traceSpanId, span)))
 		})
 	}
 }
