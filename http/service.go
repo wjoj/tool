@@ -49,6 +49,12 @@ func HTTPServer(cfg *HTTP, handler http.Handler) *http.Server {
 		if err != nil {
 			panic(err)
 		}
+		switch hand := handler.(type) {
+		case *gin.Engine:
+			hand.Use(trace.TracerHttpGinMiddleware())
+		default:
+			panic("this type is not supported by prometheus")
+		}
 	}
 	if cfg.Prom != nil {
 		if len(cfg.Prom.Namespace) == 0 {

@@ -21,11 +21,11 @@ const (
 )
 
 type TracerCfg struct {
-	Type        TracerType
-	EndpointURL string
-	HostURL     string
-	IsOpen      bool
-	Kafkas      []string
+	Type        TracerType `json:"type" yaml:"type"`
+	EndpointURL string     `json:"endpoint_url" yaml:"endpoint_url"`
+	HostURL     string     `json:"host_url" yaml:"host_url"`
+	IsOpen      bool       `json:"is_open" yaml:"is_open"`
+	Kafkas      []string   `json:"Kafkas" yaml:"Kafkas"`
 }
 
 func (c *TracerCfg) String() string {
