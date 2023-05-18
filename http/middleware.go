@@ -5,6 +5,9 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/wjoj/tool/monitoring"
+	"github.com/wjoj/tool/trace"
 )
 
 type Headers struct {
@@ -83,4 +86,33 @@ func MiddlewareCross(h *Headers) func(*gin.Context) {
 		}
 		ctx.Next()
 	}
+}
+
+func MiddlewareGinTrace() func(*gin.Context) {
+	return trace.MiddlewareHttpGin()
+}
+
+type prometheusM struct {
+	his *prometheus.HistogramVec
+	ctr *prometheus.CounterVec
+}
+
+var promM *prometheusM
+
+func setGlobalPrometheusM(his *prometheus.HistogramVec, ctr *prometheus.CounterVec) {
+	promM = &prometheusM{
+		his: his,
+		ctr: ctr,
+	}
+}
+
+func isPrometheusOpen() bool {
+	return promM != nil
+}
+
+func MiddlewareGinPrometheus() func(*gin.Context) {
+	if !isPrometheusOpen() {
+		return nil
+	}
+	return monitoring.MiddlewareHttpGinPrometheus(promM.his, promM.ctr)
 }

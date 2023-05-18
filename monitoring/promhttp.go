@@ -160,7 +160,7 @@ func NewMetricHttpServerReqCodeTotal(namespace string) *prometheus.CounterVec {
 	return vec
 }
 
-func HttpGinPrometheusMiddleware(his *prometheus.HistogramVec, ctr *prometheus.CounterVec) func(*gin.Context) {
+func MiddlewareHttpGinPrometheus(his *prometheus.HistogramVec, ctr *prometheus.CounterVec) func(*gin.Context) {
 	return func(ctx *gin.Context) {
 		startTime := time.Now()
 		ctx.Next()

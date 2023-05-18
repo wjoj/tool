@@ -100,7 +100,7 @@ func TracerHttpFunc(req *http.Request) (opentracing.Span, context.Context) {
 
 var traceSpanId = "traceSpanId"
 
-func TracerFromHttpGin(g *gin.Context) (opentracing.Span, error) {
+func SpanFromHttpGin(g *gin.Context) (opentracing.Span, error) {
 	span, is := g.Request.Context().Value(&traceSpanId).(opentracing.Span)
 	if is {
 		return span, nil
@@ -108,7 +108,7 @@ func TracerFromHttpGin(g *gin.Context) (opentracing.Span, error) {
 	return nil, errors.New("span is empty")
 }
 
-func TracerHttpGinMiddleware() func(*gin.Context) {
+func MiddlewareHttpGin() func(*gin.Context) {
 	return func(g *gin.Context) {
 		span, ctxc := TracerHttpFunc(g.Request)
 		defer span.Finish()
@@ -124,7 +124,7 @@ func TracerHttpGinMiddleware() func(*gin.Context) {
 	}
 }
 
-func TracerFromHttp(r *http.Request) (opentracing.Span, error) {
+func SpanFromHttp(r *http.Request) (opentracing.Span, error) {
 	span, is := r.Context().Value(&traceSpanId).(opentracing.Span)
 	if is {
 		return span, nil
