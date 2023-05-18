@@ -4,6 +4,7 @@ import (
 	"sync"
 
 	"github.com/gin-gonic/gin"
+	"github.com/wjoj/tool/trace"
 )
 
 type ginOptions struct {
@@ -52,9 +53,15 @@ func GinGlobalEngine(opts ...ginOption) *gin.Engine {
 		gGloabl.Use(MiddlewareCross(opt.crossHeaders))
 	}
 	if opt.trace {
+		if !trace.IsGlobal() {
+			panic("trace is not configured")
+		}
 		gGloabl.Use(MiddlewareGinTrace())
 	}
 	if opt.monitoring {
+		if !isPrometheusOpen() {
+			panic("prometheus is not configured")
+		}
 		gGloabl.Use(MiddlewareGinPrometheus())
 	}
 	return gGloabl
@@ -66,9 +73,15 @@ func GinRouterGroup(g *gin.RouterGroup, opts ...ginOption) *gin.RouterGroup {
 		g.Use(MiddlewareCross(opt.crossHeaders))
 	}
 	if opt.trace {
+		if !trace.IsGlobal() {
+			panic("trace is not configured")
+		}
 		g.Use(MiddlewareGinTrace())
 	}
 	if opt.monitoring {
+		if !isPrometheusOpen() {
+			panic("prometheus is not configured")
+		}
 		g.Use(MiddlewareGinPrometheus())
 	}
 	return g

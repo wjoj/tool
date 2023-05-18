@@ -89,6 +89,9 @@ func MiddlewareCross(h *Headers) func(*gin.Context) {
 }
 
 func MiddlewareGinTrace() func(*gin.Context) {
+	if !trace.IsGlobal() {
+		return nil
+	}
 	return trace.MiddlewareHttpGin()
 }
 

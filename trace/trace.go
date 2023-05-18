@@ -98,6 +98,10 @@ func TracerHttpFunc(req *http.Request) (opentracing.Span, context.Context) {
 	return tr, req.Context()
 }
 
+func IsGlobal() bool {
+	return opentracing.IsGlobalTracerRegistered()
+}
+
 var traceSpanId = "traceSpanId"
 
 func SpanFromHttpGin(g *gin.Context) (opentracing.Span, error) {
