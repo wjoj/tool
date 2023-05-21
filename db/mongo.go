@@ -2,6 +2,7 @@ package db
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"reflect"
 	"strings"
@@ -106,6 +107,10 @@ func (m *Mongo) Close() error {
 		m.close <- struct{}{}
 	}
 	return m.cli.Disconnect(context.Background())
+}
+
+func (m *Mongo) CurrentDbName() string {
+	return m.c.DBName
 }
 
 func (m *Mongo) WatchConnect() {
@@ -233,7 +238,7 @@ func (c *Collection) Collection() *mongo.Collection {
 
 func (c *Collection) Insert(d ...interface{}) ([]interface{}, error) {
 	if len(d) == 0 {
-		res, err := c.col.InsertOne(context.Background(), d)
+		res, err := c.col.InsertOne(context.Background(), d[0])
 		if err != nil {
 			return nil, err
 		}
@@ -248,8 +253,8 @@ func (c *Collection) Insert(d ...interface{}) ([]interface{}, error) {
 }
 
 func (c *Collection) Update(filter bson.M, d ...interface{}) (int64, error) {
-	if len(d) == 0 {
-		res, err := c.col.UpdateOne(context.Background(), filter, d)
+	if len(d) == 1 {
+		res, err := c.col.UpdateOne(context.Background(), filter, d[0])
 		if err != nil {
 			return 0, err
 		}
@@ -349,4 +354,8 @@ func SetGlobalMongo(mgo *Mongo) {
 
 func GlobalMongo() *Mongo {
 	return Mgo
+}
+
+func IsNotDocuments(err error) bool {
+	return errors.Is(err, mongo.ErrNoDocuments)
 }
