@@ -126,9 +126,8 @@ func (c *Config) OpenDB() (*gorm.DB, error) {
 			dbObj.Account, dbObj.Password, dbObj.Host, dbObj.Port, dbObj.DBName))
 
 	case DBTypeClickHouse:
-		dbDSN = clickhouse.Open(fmt.Sprintf("tcp://%v:%v?username=%v&password=%v&database=%v&read_timeout=%v",
-			dbObj.Host, dbObj.Port, dbObj.Account, dbObj.Password, dbObj.DBName, dbObj.TimeOut))
-
+		dbDSN = clickhouse.Open(fmt.Sprintf("clickhouse://%s:%s@%s:%d/%s?read_timeout=%d",
+			dbObj.Account, dbObj.Password, dbObj.Host, dbObj.Port, dbObj.DBName, dbObj.TimeOut))
 	default:
 		// fmt.Printf("数据库存储方式:SQLite\n")
 		dbDSN = sqlite.Open(fmt.Sprintf("%v.db", dbObj.DBName))
@@ -176,7 +175,7 @@ func (c *Config) OpenDB() (*gorm.DB, error) {
 	if c.Debug {
 		db = db.Debug()
 	}
-
+	//    db.Use(plugin gorm.Plugin)
 	dc, err := db.DB()
 	if err != nil {
 		return nil, err

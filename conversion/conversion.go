@@ -190,7 +190,15 @@ func ToBase64URLDecode(str string) ([]byte, error) {
 }
 
 func ToJoint(sep string, s ...string) string {
-	return strings.Join(s, sep)
+	str := strings.Join(s, sep)
+	if str == sep {
+		return ""
+	} else if len(sep) != 0 && sep == str[:len(sep)] {
+		return str[len(sep):]
+	} else if idx := strings.Index(str, sep); idx != -1 && len(sep) != 0 {
+		return str[:idx]
+	}
+	return str
 }
 
 func ToJointFunc(sep string, lng int, sF func(index int) string) string {
