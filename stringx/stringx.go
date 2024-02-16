@@ -7,6 +7,7 @@ import (
 	"fmt"
 
 	"golang.org/x/crypto/scrypt"
+	"golang.org/x/text/width"
 )
 
 func PasswordEncrypt(salt, password string) string {
@@ -24,4 +25,18 @@ func MD5(con string) string {
 	md5c.Write([]byte(con))
 	cipherStr := md5c.Sum(nil)
 	return hex.EncodeToString(cipherStr)
+}
+
+// 获取字符串宽度
+func CharacterWidth(s string) (w int) {
+	for _, r := range s {
+		switch width.LookupRune(r).Kind() {
+		case width.EastAsianFullwidth, width.EastAsianWide:
+			w += 2
+		case width.EastAsianHalfwidth, width.EastAsianNarrow,
+			width.Neutral, width.EastAsianAmbiguous:
+			w += 1
+		}
+	}
+	return w
 }

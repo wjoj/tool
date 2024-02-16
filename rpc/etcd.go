@@ -4,7 +4,7 @@ import (
 	"context"
 	"crypto/tls"
 	"crypto/x509"
-	"io/ioutil"
+	"os"
 	"sync"
 	"time"
 
@@ -59,7 +59,7 @@ func NewEtcd(cfg *ConfigEtcd, serviceName string) (Discover, error) {
 			return nil, err
 		}
 
-		caData, err := ioutil.ReadFile(cfg.CertFile)
+		caData, err := os.ReadFile(cfg.CertFile)
 		if err != nil {
 			return nil, err
 		}
