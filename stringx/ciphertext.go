@@ -31,7 +31,7 @@ func zeroUnPadding(origData []byte) []byte {
 		})
 }
 
-//DESEncrypt 加密
+// DESEncrypt 加密
 func DESEncrypt(text string, key string) (string, error) {
 	src := []byte(text)
 	block, err := des.NewCipher([]byte(key))
@@ -41,7 +41,7 @@ func DESEncrypt(text string, key string) (string, error) {
 	bs := block.BlockSize()
 	src = zeroPadding(src, bs)
 	if len(src)%bs != 0 {
-		return "", errors.New("Need a multiple of the blocksize")
+		return "", errors.New("need a multiple of the blocksize")
 	}
 	out := make([]byte, len(src))
 	dst := out
@@ -53,7 +53,7 @@ func DESEncrypt(text string, key string) (string, error) {
 	return hex.EncodeToString(out), nil
 }
 
-//DESEncrypt 加密
+// DESEncrypt 加密
 func DESEncryptBody(body []byte, key string) (string, error) {
 	src := body
 	block, err := des.NewCipher([]byte(key))
@@ -63,7 +63,7 @@ func DESEncryptBody(body []byte, key string) (string, error) {
 	bs := block.BlockSize()
 	src = zeroPadding(src, bs)
 	if len(src)%bs != 0 {
-		return "", errors.New("Need a multiple of the blocksize")
+		return "", errors.New("need a multiple of the blocksize")
 	}
 	out := make([]byte, len(src))
 	dst := out
@@ -75,7 +75,7 @@ func DESEncryptBody(body []byte, key string) (string, error) {
 	return hex.EncodeToString(out), nil
 }
 
-//DESDecrypt 解密
+// DESDecrypt 解密
 func DESDecrypt(decrypted string, key string) (string, error) {
 	src, err := hex.DecodeString(decrypted)
 	if err != nil {
@@ -100,7 +100,7 @@ func DESDecrypt(decrypted string, key string) (string, error) {
 	return string(out), nil
 }
 
-//DESDecrypt 解密
+// DESDecrypt 解密
 func DESDecryptBody(decrypted string, key string) ([]byte, error) {
 	src, err := hex.DecodeString(decrypted)
 	if err != nil {
@@ -131,14 +131,14 @@ func pKCS7Padding(ciphertext []byte, blocksize int) []byte {
 	return append(ciphertext, padtext...)
 }
 
-//去码
+// 去码
 func pKCS7UnPadding(origData []byte) []byte {
 	length := len(origData)
 	unpadding := int(origData[length-1])
 	return origData[:(length - unpadding)]
 }
 
-//AESEncrypt CBC加密 key 16,24,32长度
+// AESEncrypt CBC加密 key 16,24,32长度
 func AESEncrypt(orig string, key string) (origs string, errs error) {
 	defer func() {
 		if err := recover(); err != nil {
@@ -164,7 +164,7 @@ func AESEncrypt(orig string, key string) (origs string, errs error) {
 	return base64.StdEncoding.EncodeToString(cryted), nil
 }
 
-//AESDecrypt CBC解密
+// AESDecrypt CBC解密
 func AESDecrypt(cryted string, key string) (origs string, errs error) {
 	defer func() {
 		if err := recover(); err != nil {
@@ -201,7 +201,7 @@ func generateKey(key []byte) (genKey []byte) {
 	return genKey
 }
 
-//AESEncryptModelECB ECB加密
+// AESEncryptModelECB ECB加密
 func AESEncryptModelECB(src []byte, key []byte) (encrypted []byte, errs error) {
 	defer func() {
 		if err := recover(); err != nil {
@@ -225,7 +225,7 @@ func AESEncryptModelECB(src []byte, key []byte) (encrypted []byte, errs error) {
 	return encrypted, nil
 }
 
-//AESDecryptModelECB ECB解密
+// AESDecryptModelECB ECB解密
 func AESDecryptModelECB(encrypted []byte, key []byte) (decrypted []byte, errs error) {
 	defer func() {
 		if err := recover(); err != nil {
@@ -247,7 +247,7 @@ func AESDecryptModelECB(encrypted []byte, key []byte) (decrypted []byte, errs er
 	return decrypted[:trim], nil
 }
 
-//AESDecrypterModelCFB CFB加密
+// AESDecrypterModelCFB CFB加密
 func AESDecrypterModelCFB(orig string, keys string) (origs string, errs error) {
 
 	key, errs := hex.DecodeString(keys)
@@ -280,7 +280,7 @@ func AESDecrypterModelCFB(orig string, keys string) (origs string, errs error) {
 	return string(ciphertext), nil
 }
 
-//AESEncryptModelCFB CFB解密
+// AESEncryptModelCFB CFB解密
 func AESEncryptModelCFB(orig string, keys string) (origs string, errs error) {
 	key, _ := hex.DecodeString(keys)
 	plaintext := []byte(orig)
@@ -306,7 +306,7 @@ func AESEncryptModelCFB(orig string, keys string) (origs string, errs error) {
 	return string(ciphertext), nil
 }
 
-//RSAEncrypt rsa加密 公钥(根据私钥生成:openssl rsa -in rsa_private_key.pem -pubout -out rsa_public_key.pem)
+// RSAEncrypt rsa加密 公钥(根据私钥生成:openssl rsa -in rsa_private_key.pem -pubout -out rsa_public_key.pem)
 func RSAEncrypt(origData []byte, publicKey []byte) ([]byte, error) {
 	block, _ := pem.Decode(publicKey)
 	if block == nil {
@@ -323,7 +323,7 @@ func RSAEncrypt(origData []byte, publicKey []byte) ([]byte, error) {
 	return rsa.EncryptPKCS1v15(rand.Reader, pub, origData)
 }
 
-//RSADecrypt rsa解密  私钥(私钥生成:openssl genrsa -out rsa_private_key.pem 1024)
+// RSADecrypt rsa解密  私钥(私钥生成:openssl genrsa -out rsa_private_key.pem 1024)
 func RSADecrypt(ciphertext []byte, privateKey []byte) ([]byte, error) {
 	block, _ := pem.Decode(privateKey)
 	if block == nil {
