@@ -1,0 +1,16 @@
+{
+    "go.useLanguageServer": true,
+    "go.inferGopath": false,
+    "go.gopath": "/Users/joj/Documents/GO/qb", // 
+    "gopls": {
+       "usePlaceholders": true,
+       "completeUnimported": true,
+       "completionDocumentation": true,
+       "hoverKind": "SynopsisDocumentation",
+    },
+    "files.eol": "\n",
+    "commentTranslate.targetLanguage": "zh-CN",
+    "terminal.integrated.env.osx": {
+        "GOPATH": "/Users/joj/Documents/GO/qb"
+    }
+}
