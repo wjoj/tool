@@ -1,5 +1,11 @@
 package tool
 
 import (
-	. "github.com/smartystreets/goconvey/convey"
+	"testing"
+
+	_ "github.com/smartystreets/goconvey/convey"
 )
+
+func TestCmd(t *testing.T) {
+	NewApp()
+}

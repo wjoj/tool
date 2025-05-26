@@ -1,0 +1,64 @@
+env: staging
+namespace: "test"
+
+http:
+  def:
+    port: 8080
+    shutdownCloseMaxWait: 10s
+    log: true
+    logName: 
+    debug: false
+    ping: true
+    swagger: false
+    routePrefix: api
+    cors: false
+
+logs:
+  def:
+    level: debug
+    levelColor: true #是否启用颜色
+    out: stdout #输出类型
+    outFormat: console #输出格式 console
+    path: log #日志文件路径
+    maxSize: 1024 #日志文件最大大小以MB为单位）
+    maxBackups: 10 #保留的最大旧日志文件数
+    maxAge: 7 #保留的最大旧日志文件天数
+    compress: false #是否压缩旧日志文件
+    
+dbs:
+  def: #默认配置
+    driver: mysql
+    host: localhost
+    port: 3308
+    user: root
+    password: root
+    dbname: test 
+    debug: true
+    prefix: 
+    charset: utf8mb4
+    maxIdleConns: 100
+    maxOpenConns: 100
+    connMaxLifetime: 10m
+    connMaxIdleTime: 10m
+    timeout: 10
+    logLevel: info
+    log: 
+  
+rediss:
+  def:
+    addrs: 
+      - localhost:6379
+    isCluster: false
+    username: 
+    password:
+    readTimeout:
+    writeTimeout:
+    poolSize:
+    minIdleConns:
+    maxConnAge:
+    maxIdleConns:
+    maxActiveConns:
+    poolTimeout:
+    idleTimeout:
+    connMaxIdleTime:
+    connMaxLifetime:
