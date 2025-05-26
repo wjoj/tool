@@ -1,4 +1,4 @@
-module github.com/wjoj/tool
+module github.com/wjoj/tool/v2
 
 go 1.24.0
 

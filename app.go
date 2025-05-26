@@ -7,15 +7,16 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/wjoj/tool/v2/config"
+	"github.com/wjoj/tool/v2/db/dbx"
+	"github.com/wjoj/tool/v2/db/mongox"
+	"github.com/wjoj/tool/v2/db/redisx"
+	"github.com/wjoj/tool/v2/httpx"
+	"github.com/wjoj/tool/v2/log"
+	"github.com/wjoj/tool/v2/utils"
+
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
-	"github.com/wjoj/tool/config"
-	"github.com/wjoj/tool/db/dbx"
-	"github.com/wjoj/tool/db/mongox"
-	"github.com/wjoj/tool/db/redisx"
-	"github.com/wjoj/tool/httpx"
-	"github.com/wjoj/tool/log"
-	"github.com/wjoj/tool/utils"
 )
 
 type fnNameType string

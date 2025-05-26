@@ -24,7 +24,7 @@
 
 ```go
 import (
-  "github.com/wjoj/tool"
+  "github.com/wjoj/tool/v2"
 )
 
 type Account struct{
