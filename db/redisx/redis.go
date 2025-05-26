@@ -6,8 +6,8 @@ import (
 	"time"
 
 	"github.com/redis/go-redis/v9"
-	"github.com/wjoj/tool/log"
-	"github.com/wjoj/tool/utils"
+	"github.com/wjoj/tool/v2/log"
+	"github.com/wjoj/tool/v2/utils"
 )
 
 type Config struct {
