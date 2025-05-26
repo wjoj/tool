@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	"github.com/natefinch/lumberjack"
-	"github.com/wjoj/tool/utils"
+	"github.com/wjoj/tool/v2/utils"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 )

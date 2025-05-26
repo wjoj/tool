@@ -1,6 +1,6 @@
 package dbx
 
-import "github.com/wjoj/tool/utils"
+import "github.com/wjoj/tool/v2/utils"
 
 type Options struct {
 	defKey *utils.DefaultKeys

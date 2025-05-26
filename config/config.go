@@ -1,11 +1,11 @@
 package config
 
 import (
-	"github.com/wjoj/tool/db/dbx"
-	"github.com/wjoj/tool/db/mongox"
-	"github.com/wjoj/tool/db/redisx"
-	"github.com/wjoj/tool/httpx"
-	"github.com/wjoj/tool/log"
+	"github.com/wjoj/tool/v2/db/dbx"
+	"github.com/wjoj/tool/v2/db/mongox"
+	"github.com/wjoj/tool/v2/db/redisx"
+	"github.com/wjoj/tool/v2/httpx"
+	"github.com/wjoj/tool/v2/log"
 )
 
 var (

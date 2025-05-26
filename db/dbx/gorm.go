@@ -8,8 +8,8 @@ import (
 	"os"
 	"time"
 
-	"github.com/wjoj/tool/log"
-	"github.com/wjoj/tool/utils"
+	"github.com/wjoj/tool/v2/log"
+	"github.com/wjoj/tool/v2/utils"
 	"gorm.io/driver/clickhouse"
 	"gorm.io/driver/mysql"
 	"gorm.io/driver/postgres"

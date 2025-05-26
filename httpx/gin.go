@@ -14,8 +14,8 @@ import (
 	"github.com/gin-gonic/gin"
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
-	"github.com/wjoj/tool/log"
-	"github.com/wjoj/tool/utils"
+	"github.com/wjoj/tool/v2/log"
+	"github.com/wjoj/tool/v2/utils"
 	"go.uber.org/zap"
 )
 

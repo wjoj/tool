@@ -2,7 +2,7 @@ package httpx
 
 import (
 	"github.com/gin-gonic/gin"
-	"github.com/wjoj/tool/utils"
+	"github.com/wjoj/tool/v2/utils"
 )
 
 type Options struct {

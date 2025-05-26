@@ -9,7 +9,7 @@ import (
 	"strings"
 
 	"github.com/iancoleman/strcase"
-	"github.com/wjoj/tool/log"
+	"github.com/wjoj/tool/v2/log"
 	"gorm.io/gorm"
 )
 
