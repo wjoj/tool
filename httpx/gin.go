@@ -77,7 +77,7 @@ func New(cfg *Config) (*Http, error) {
 			g.Use(gin.Logger())
 		}
 	}
-	// g.Use(csrf.New())
+	g.RouterGroup = *g.Group(cfg.RoutePrefix)
 	if cfg.Log && cfg.LogName != "--" {
 		// g.Use(zapLogger(log.GetLogger(cfg.LogName).Desugar()))
 		logc := log.GetLogger(cfg.LogName).Desugar()
@@ -136,7 +136,7 @@ func New(cfg *Config) (*Http, error) {
 	}, nil
 }
 
-func (h *Http) Run(f func(eng *gin.Engine)) error {
+func (h *Http) Run(f func(eng *gin.Engine), fc func()) error {
 	if f != nil {
 		f(h.Engine)
 	}
@@ -148,6 +148,7 @@ func (h *Http) Run(f func(eng *gin.Engine)) error {
 	h.done = make(chan struct{})
 	go func() {
 		// 启动服务
+		fc()
 		if err := h.srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			if h.cfg.Log && h.cfg.LogName != "--" {
 				log.GetLogger(h.cfg.LogName).Errorf("listen: %s", err)
@@ -248,11 +249,12 @@ func Init(cfgs map[string]Config, options ...Option) error {
 		}
 		https[key] = cli
 		go func() {
-			log.Infof("http server port: %d", cli.cfg.Port)
 			if err := cli.Run(func(eng *gin.Engine) {
 				for i := range funs {
 					funs[i](eng)
 				}
+			}, func() {
+				log.Infof("http server port: %d", cli.cfg.Port)
 			}); err != nil {
 				log.Errorf("init http server %s run error: %v", key, err)
 				return

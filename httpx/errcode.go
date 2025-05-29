@@ -27,10 +27,16 @@ const (
 )
 
 func (e ErrCodeType) Error() string {
+	if e == ErrCodeTypeSuccess {
+		return "success"
+	}
 	return "fail"
 }
 
 func (e ErrCodeType) String() string {
+	if e == ErrCodeTypeSuccess {
+		return "success"
+	}
 	return "fail"
 }
 

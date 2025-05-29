@@ -167,6 +167,43 @@ type AuthInfG[A any] interface {
 	AuthInf
 }
 
+type HandleType[A any] func(g *gin.Context, auth A) (data any, err error)
+type HandleResType[A any] func(g *gin.Context, auth A) func(res ...any)
+
+type HandleT[A any] interface {
+	HandleType[A] | HandleResType[A]
+}
+
+func HandleAuthT[A any, F HandleT[A], Ag AuthInfG[A]](f F, binds ...binding.Binding) func(g *gin.Context) {
+	return func(g *gin.Context) {
+		auth := new(A)
+		var a Ag = auth
+		if err := a.Resolver(g); err != nil {
+			Fail(g, err)
+			return
+		}
+		var req any
+		for _, bind := range binds {
+			if err := g.ShouldBindWith(&req, bind); err != nil {
+				Fail(g, err)
+				return
+			}
+		}
+		var fn any = f
+		switch fnc := fn.(type) {
+		case HandleType[A]:
+			data, err := fnc(g, *auth)
+			if err != nil {
+				Fail(g, err)
+				return
+			}
+			Success(g, data)
+		case HandleResType[A]:
+			fnc(g, *auth)(resf(g))
+		}
+	}
+}
+
 func HandleAuth[A any, Ag AuthInfG[A]](f func(g *gin.Context, auth A) (data any, err error)) func(g *gin.Context) {
 	return func(g *gin.Context) {
 		auth := new(A)
@@ -181,6 +218,76 @@ func HandleAuth[A any, Ag AuthInfG[A]](f func(g *gin.Context, auth A) (data any,
 			return
 		}
 		Success(g, data)
+	}
+}
+
+func HandleAuthRes[A any, Ag AuthInfG[A]](f func(g *gin.Context, auth A) func(res ...any)) func(g *gin.Context) {
+	return func(g *gin.Context) {
+		auth := new(A)
+		var a Ag = auth
+		if err := a.Resolver(g); err != nil {
+			Fail(g, err)
+			return
+		}
+		f(g, *auth)(resf(g))
+	}
+}
+
+type Res struct {
+	Data       any
+	HttpStatus HttpStatus
+	Code       ErrCodeType
+	Msg        string
+}
+
+type HttpStatus int
+type MsgType string
+type FailType string
+
+func resf(ctx *gin.Context) func(res ...any) {
+	return func(res ...any) {
+		re := Res{
+			HttpStatus: http.StatusOK,
+			Code:       ErrCodeTypeSuccess,
+			Msg:        ErrCodeTypeSuccess.Error(),
+		}
+		for i := range res {
+			resdata := res[i]
+			switch data := resdata.(type) {
+			case HttpStatus:
+				re.HttpStatus = data
+			case ErrCodeType:
+				re.Code = data
+				re.Msg = data.Error()
+			case int:
+				re.Code = ErrCodeType(data)
+			case MsgType:
+				re.Msg = string(data)
+			case validator.ValidationErrors:
+				re.Code = ErrCodeTypeFail
+				// re.Msg = data[0].Translate(TransZh)
+			case *ErrCodeType:
+				re.Code = *data
+				re.Msg = data.Error()
+			case ErrMsgData:
+				re.Code = ErrCodeType(data.GetCode())
+				re.Msg = data.Error()
+			case *ErrMsgData:
+				re.Code = ErrCodeType(data.GetCode())
+				re.Msg = data.Error()
+			case FailType:
+				re.Code = ErrCodeTypeFail
+				re.Msg = string(data)
+			default:
+				re.Data = data
+			}
+		}
+		Json(ctx, int(re.HttpStatus), ResponseData{
+			Code: int(re.Code),
+			Msg:  re.Msg,
+			Data: re.Data,
+			UUID: uuid(),
+		})
 	}
 }
 
@@ -207,13 +314,7 @@ func HandleAuthParameter[A any, AInf AuthInfG[A], P any](f func(g *gin.Context, 
 		Success(g, data)
 	}
 }
-
-type AuthParameter[A any, P any] struct {
-	Auth      A
-	Parameter P
-}
-
-func HandleAuthParameter2[A any, AInf AuthInfG[A], P any](f func(g *gin.Context, p AuthParameter[A, P]) (data any, err error), binds ...binding.Binding) func(g *gin.Context) {
+func HandleAuthParameterRes[A any, AInf AuthInfG[A], P any](f func(g *gin.Context, auth A, parameter P) func(res ...any), binds ...binding.Binding) func(g *gin.Context) {
 	return func(g *gin.Context) {
 		auth := new(A)
 		var a AInf = auth
@@ -228,7 +329,33 @@ func HandleAuthParameter2[A any, AInf AuthInfG[A], P any](f func(g *gin.Context,
 				return
 			}
 		}
-		data, err := f(g, AuthParameter[A, P]{
+		f(g, *auth, req)(resf(g))
+	}
+}
+
+type AuthParameter[A any, P any] struct {
+	Context   *gin.Context
+	Auth      A
+	Parameter P
+}
+
+func HandleAuthParameter2[A any, AInf AuthInfG[A], P any](f func(p AuthParameter[A, P]) (data any, err error), binds ...binding.Binding) func(g *gin.Context) {
+	return func(g *gin.Context) {
+		auth := new(A)
+		var a AInf = auth
+		if err := a.Resolver(g); err != nil {
+			Fail(g, err)
+			return
+		}
+		var req P
+		for _, bind := range binds {
+			if err := g.ShouldBindWith(&req, bind); err != nil {
+				Fail(g, err)
+				return
+			}
+		}
+		data, err := f(AuthParameter[A, P]{
+			Context:   g,
 			Auth:      *auth,
 			Parameter: req,
 		})

@@ -13,6 +13,8 @@ import (
 	"github.com/wjoj/tool/v2/db/redisx"
 	"github.com/wjoj/tool/v2/httpx"
 	"github.com/wjoj/tool/v2/log"
+	"github.com/wjoj/tool/v2/resources/casbinx"
+	"github.com/wjoj/tool/v2/resources/jwt"
 	"github.com/wjoj/tool/v2/utils"
 
 	"github.com/spf13/cobra"
@@ -28,6 +30,8 @@ const (
 	fnNameRedis  fnNameType = "redis"
 	fnNameMongo  fnNameType = "mongo"
 	fnNameHttp   fnNameType = "http"
+	fnNameCasbin fnNameType = "casbin"
+	fnNameJwt    fnNameType = "jwt"
 )
 
 type funcErr struct {
@@ -135,6 +139,28 @@ func (a *App) Mongo(options ...mongox.Option) *App {
 	return a
 }
 
+func (a *App) Casbin(options ...casbinx.Option) *App {
+	a.setIsConfig()
+	a.fnMap[fnNameCasbin] = funcErr{
+		Fn: func() error {
+			return casbinx.Init(config.GetCasbins(), options...)
+		},
+		RekeaseFn: nil,
+		Name:      fnNameCasbin,
+	}
+	return a
+}
+func (a *App) Jwt(options ...jwt.Option) *App {
+	a.setIsConfig()
+	a.fnMap[fnNameJwt] = funcErr{
+		Fn: func() error {
+			return jwt.Init(config.GetJwts(), options...)
+		},
+		RekeaseFn: nil,
+		Name:      fnNameJwt,
+	}
+	return a
+}
 func (a *App) HttpServer(options ...httpx.Option) *App {
 	a.setIsConfig()
 	a.fnMap[fnNameHttp] = funcErr{
@@ -239,21 +265,15 @@ func (a *App) Run() error {
 			},
 		})
 	}
-	fnRedis, is := a.fnMap[fnNameRedis]
-	if is {
-		fs = append(fs, fnRedis)
+	fnames := []fnNameType{
+		fnNameRedis, fnNameGorm, fnNameMongo,
+		fnNameJwt, fnNameCasbin, fnNameHttp,
 	}
-	fnGorm, is := a.fnMap[fnNameGorm]
-	if is {
-		fs = append(fs, fnGorm)
-	}
-	fnMongo, is := a.fnMap[fnNameMongo]
-	if is {
-		fs = append(fs, fnMongo)
-	}
-	fnHttp, is := a.fnMap[fnNameHttp]
-	if is {
-		fs = append(fs, fnHttp)
+	for _, fname := range fnames {
+		fn, is := a.fnMap[fname]
+		if is {
+			fs = append(fs, fn)
+		}
 	}
 	a.rootCmd.Run = func(cmd *cobra.Command, args []string) {
 		if err := a.run(fs); err != nil {

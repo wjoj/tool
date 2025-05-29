@@ -6,6 +6,9 @@ import (
 	"github.com/wjoj/tool/v2/db/redisx"
 	"github.com/wjoj/tool/v2/httpx"
 	"github.com/wjoj/tool/v2/log"
+	"github.com/wjoj/tool/v2/resources/casbinx"
+	"github.com/wjoj/tool/v2/resources/jwt"
+	"github.com/wjoj/tool/v2/utils"
 )
 
 var (
@@ -18,6 +21,8 @@ var (
 	dbs        map[string]dbx.Config
 	mongos     map[string]mongox.Config
 	http       map[string]httpx.Config
+	casbins    map[string]casbinx.Config
+	jwts       map[string]jwt.Config
 )
 
 func SetDefaultKey(key string) {
@@ -66,18 +71,13 @@ func GetLogs() map[string]log.Config {
 }
 
 // GetLog 获取日志
-func GetLog(name ...string) (log log.Config) {
-	var is bool
-	if len(name) == 0 {
-		log, is = logs[GetDefaultKey()]
-		if !is {
-			panic(GetDefaultKey() + " log config not found")
-		}
-	} else {
-		log, is = logs[name[0]]
-		if !is {
-			panic(name[0] + " log config not found")
-		}
+func GetLog(key ...string) (logc log.Config) {
+	logc, err := utils.Get("config log", GetDefaultKey(), func(k string) (log.Config, bool) {
+		m, is := logs[k]
+		return m, is
+	}, key...)
+	if err != nil {
+		panic(err)
 	}
 	return
 }
@@ -91,18 +91,13 @@ func GetRediss() map[string]redisx.Config {
 	return rediss
 }
 
-func GetRedis(name ...string) (redis redisx.Config) {
-	var is bool
-	if len(name) == 0 {
-		redis, is = rediss[GetDefaultKey()]
-		if !is {
-			panic(GetDefaultKey() + " redis config not found")
-		}
-	} else {
-		redis, is = rediss[name[0]]
-		if !is {
-			panic(name[0] + " redis config not found")
-		}
+func GetRedis(key ...string) (redis redisx.Config) {
+	redis, err := utils.Get("config redis", GetDefaultKey(), func(k string) (redisx.Config, bool) {
+		m, is := rediss[k]
+		return m, is
+	}, key...)
+	if err != nil {
+		panic(err)
 	}
 	return
 }
@@ -116,18 +111,13 @@ func GetDbs() map[string]dbx.Config {
 	return dbs
 }
 
-func GetDb(name ...string) (db dbx.Config) {
-	var is bool
-	if len(name) == 0 {
-		db, is = dbs[GetDefaultKey()]
-		if !is {
-			panic(GetDefaultKey() + " db config not found")
-		}
-	} else {
-		db, is = dbs[name[0]]
-		if !is {
-			panic(name[0] + " db config not found")
-		}
+func GetDb(key ...string) (db dbx.Config) {
+	db, err := utils.Get("config db", GetDefaultKey(), func(k string) (dbx.Config, bool) {
+		m, is := dbs[k]
+		return m, is
+	}, key...)
+	if err != nil {
+		panic(err)
 	}
 	return
 }
@@ -140,18 +130,13 @@ func GetMongos() map[string]mongox.Config {
 	return mongos
 }
 
-func GetMongo(name ...string) (mgo mongox.Config) {
-	var is bool
-	if len(name) == 0 {
-		mgo, is = mongos[GetDefaultKey()]
-		if !is {
-			panic(GetDefaultKey() + " mongo config not found")
-		}
-	} else {
-		mgo, is = mongos[name[0]]
-		if !is {
-			panic(name[0] + " mongo config not found")
-		}
+func GetMongo(key ...string) (mgo mongox.Config) {
+	mgo, err := utils.Get("config mongo", GetDefaultKey(), func(k string) (mongox.Config, bool) {
+		m, is := mongos[k]
+		return m, is
+	}, key...)
+	if err != nil {
+		panic(err)
 	}
 	return
 }
@@ -164,18 +149,51 @@ func GetHttp() map[string]httpx.Config {
 	return http
 }
 
-func GetHttpServer(name ...string) (cfg httpx.Config) {
-	var is bool
-	if len(name) == 0 {
-		cfg, is = http[GetDefaultKey()]
-		if !is {
-			panic(GetDefaultKey() + " http config not found")
-		}
-	} else {
-		cfg, is = http[name[0]]
-		if !is {
-			panic(name[0] + " http config not found")
-		}
+func GetHttpServer(key ...string) (cfg httpx.Config) {
+	cfg, err := utils.Get("config http", GetDefaultKey(), func(k string) (httpx.Config, bool) {
+		m, is := http[k]
+		return m, is
+	}, key...)
+	if err != nil {
+		panic(err)
+	}
+	return
+}
+
+func SetCasbins(c map[string]casbinx.Config) {
+	casbins = c
+}
+
+func GetCasbins() map[string]casbinx.Config {
+	return casbins
+}
+
+func GetCasbin(key ...string) (casbin casbinx.Config) {
+	casbin, err := utils.Get("config casbin", GetDefaultKey(), func(k string) (casbinx.Config, bool) {
+		m, is := casbins[k]
+		return m, is
+	}, key...)
+	if err != nil {
+		panic(err)
+	}
+	return
+}
+
+func SetJwts(j map[string]jwt.Config) {
+	jwts = j
+}
+
+func GetJwts() map[string]jwt.Config {
+	return jwts
+}
+
+func GetJwt(key ...string) (jt jwt.Config) {
+	jt, err := utils.Get("config jwt", GetDefaultKey(), func(k string) (jwt.Config, bool) {
+		m, is := jwts[k]
+		return m, is
+	}, key...)
+	if err != nil {
+		panic(err)
 	}
 	return
 }

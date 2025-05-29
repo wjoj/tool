@@ -48,6 +48,8 @@ func Read(cfgRoot, cfgFile string) error {
 	SetDbs(cfg.Dbs)
 	SetMongos(cfg.Mongos)
 	SetHttp(cfg.Http)
+	SetCasbins(cfg.Casbins)
+	SetJwts(cfg.Jwts)
 	viper.OnConfigChange(func(e fsnotify.Event) { // 监听配置文件修改
 		fmt.Printf("config file changed:%+v\n", e)
 	})
