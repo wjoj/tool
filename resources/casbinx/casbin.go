@@ -77,7 +77,7 @@ func New(cfg *Config) (*Casbin, error) {
 	var err error
 	switch cfg.DBType {
 	case DbTypeGorm:
-		adapter, err = gormadapter.NewAdapterByDBUseTableName(dbx.GetClient(cfg.Key), cfg.Prefix, cfg.Name)
+		adapter, err = gormadapter.NewAdapterByDBUseTableName(dbx.Get(cfg.Key), cfg.Prefix, cfg.Name)
 		if err != nil {
 			return nil, fmt.Errorf("failed to initialize casbin adapter: %v", err)
 		}
@@ -109,7 +109,7 @@ var defaultKey = utils.DefaultKey.DefaultKey
 
 func Init(cfgs map[string]Config, options ...Option) error {
 	log.Info("init casbin")
-	opt := applyGenGormOptions(options...)
+	opt := applyOptions(options...)
 	defaultKey = opt.defKey.DefaultKey
 	var err error
 	cbMap, err = utils.Init("casbin", defaultKey, opt.defKey.Keys, cfgs, func(cfg Config) (*Casbin, error) {
@@ -124,6 +124,7 @@ func Init(cfgs map[string]Config, options ...Option) error {
 	log.Info("init casbin success")
 	return nil
 }
+
 func InitGlobal(cfg *Config) error {
 	var err error
 	cb, err = New(cfg)

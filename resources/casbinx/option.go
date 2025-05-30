@@ -22,7 +22,7 @@ func WithLogConfigKeysOption(keys ...string) Option {
 	}
 }
 
-func applyGenGormOptions(options ...Option) Options {
+func applyOptions(options ...Option) Options {
 	opts := Options{
 		defKey: utils.DefaultKey,
 	}

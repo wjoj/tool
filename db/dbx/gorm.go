@@ -225,7 +225,7 @@ var defaultKey = utils.DefaultKey.DefaultKey
 
 func Init(cfgs map[string]Config, options ...Option) error {
 	log.Info("init db")
-	opt := applyGenGormOptions(options...)
+	opt := applyOptions(options...)
 	defaultKey = opt.defKey.DefaultKey
 	dbs = make(map[string]*DB)
 	if len(opt.defKey.Keys) != 0 {
@@ -275,19 +275,16 @@ func InitGlobal(cfg *Config) error {
 	}
 	return nil
 }
-func GetClient(name ...string) *DB {
-	if len(name) == 0 {
-		cli, is := dbs[defaultKey]
-		if !is {
-			panic(fmt.Errorf("db client %s not found", utils.DefaultKey.DefaultKey))
-		}
-		return cli
+
+func Get(key ...string) *DB {
+	dbc, err := utils.Get("db", defaultKey, func(s string) (*DB, bool) {
+		cli, is := dbs[s]
+		return cli, is
+	}, key...)
+	if err != nil {
+		panic(err)
 	}
-	cli, is := dbs[name[0]]
-	if !is {
-		panic(fmt.Errorf("db client %s not found", name[0]))
-	}
-	return cli
+	return dbc
 }
 
 // Client

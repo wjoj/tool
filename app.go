@@ -24,14 +24,15 @@ import (
 type fnNameType string
 
 const (
-	fnNameConfig fnNameType = "config"
-	fnNameGorm   fnNameType = "gorm"
-	fnNameLog    fnNameType = "log"
-	fnNameRedis  fnNameType = "redis"
-	fnNameMongo  fnNameType = "mongo"
-	fnNameHttp   fnNameType = "http"
-	fnNameCasbin fnNameType = "casbin"
-	fnNameJwt    fnNameType = "jwt"
+	fnNameConfig  fnNameType = "config"
+	fnNameGorm    fnNameType = "gorm"
+	fnNameGenGorm fnNameType = "gengorm"
+	fnNameLog     fnNameType = "log"
+	fnNameRedis   fnNameType = "redis"
+	fnNameMongo   fnNameType = "mongo"
+	fnNameHttp    fnNameType = "http"
+	fnNameCasbin  fnNameType = "casbin"
+	fnNameJwt     fnNameType = "jwt"
 )
 
 type funcErr struct {
@@ -49,13 +50,15 @@ type App struct {
 	isConfig bool
 	fnMap    map[fnNameType]funcErr
 	cmdarg   *cmdarg
+	opt      Options
 	rootCmd  *cobra.Command
 	cmds     []*cobra.Command
 }
 
-func NewApp() *App {
+func NewApp(opts ...Option) *App {
 	return &App{
 		isConfig: false,
+		opt:      applyOptions(opts...),
 		fnMap:    map[fnNameType]funcErr{},
 		cmdarg:   &cmdarg{},
 		rootCmd: &cobra.Command{
@@ -123,6 +126,19 @@ func (a *App) Gorm(options ...dbx.Option) *App {
 		},
 		RekeaseFn: dbx.CloseAll,
 		Name:      fnNameGorm,
+	}
+	return a
+}
+
+func (a *App) GenGorm(options ...dbx.GenOption) *App {
+	a.setIsConfig()
+	a.fnMap[fnNameGenGorm] = funcErr{
+		Fn: func() error {
+			dbx.GenByGorm(options...)
+			return nil
+		},
+		RekeaseFn: nil,
+		Name:      fnNameGenGorm,
 	}
 	return a
 }
@@ -219,19 +235,25 @@ func (a *App) run(fs []funcErr) error {
 }
 
 func (a *App) rekease(fs []funcErr) error {
+	rel := func() error {
+		for _, f := range fs {
+			if f.RekeaseFn == nil {
+				continue
+			}
+			if err := f.RekeaseFn(); err != nil {
+				fmt.Printf("%+v err:%+v\n", f.Name, err)
+				return err
+			}
+		}
+		return nil
+	}
+	if a.opt.quit {
+		return rel()
+	}
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit
-	for _, f := range fs {
-		if f.RekeaseFn == nil {
-			continue
-		}
-		if err := f.RekeaseFn(); err != nil {
-			fmt.Printf("%+v err:%+v\n", f.Name, err)
-			return err
-		}
-	}
-	return nil
+	return rel()
 }
 
 func (a *App) Run() error {
@@ -268,6 +290,7 @@ func (a *App) Run() error {
 	fnames := []fnNameType{
 		fnNameRedis, fnNameGorm, fnNameMongo,
 		fnNameJwt, fnNameCasbin, fnNameHttp,
+		fnNameGenGorm,
 	}
 	for _, fname := range fnames {
 		fn, is := a.fnMap[fname]
