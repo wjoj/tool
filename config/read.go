@@ -50,6 +50,7 @@ func Read(cfgRoot, cfgFile string) error {
 	SetHttp(cfg.Http)
 	SetCasbins(cfg.Casbins)
 	SetJwts(cfg.Jwts)
+	SetI18ns(cfg.I18ns)
 	viper.OnConfigChange(func(e fsnotify.Event) { // 监听配置文件修改
 		fmt.Printf("config file changed:%+v\n", e)
 	})

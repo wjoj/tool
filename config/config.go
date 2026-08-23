@@ -7,6 +7,7 @@ import (
 	"github.com/wjoj/tool/v2/httpx"
 	"github.com/wjoj/tool/v2/log"
 	"github.com/wjoj/tool/v2/resources/casbinx"
+	"github.com/wjoj/tool/v2/resources/i18n"
 	"github.com/wjoj/tool/v2/resources/jwt"
 	"github.com/wjoj/tool/v2/utils"
 )
@@ -23,6 +24,7 @@ var (
 	http       map[string]httpx.Config
 	casbins    map[string]casbinx.Config
 	jwts       map[string]jwt.Config
+	i18ns      map[string]i18n.Config
 )
 
 func SetDefaultKey(key string) {
@@ -149,6 +151,17 @@ func GetHttp() map[string]httpx.Config {
 	return http
 }
 
+func GetHttpx(key ...string) (h httpx.Config) {
+	h, err := utils.Get("config http", GetDefaultKey(), func(k string) (httpx.Config, bool) {
+		m, is := http[k]
+		return m, is
+	}, key...)
+	if err != nil {
+		panic(err)
+	}
+	return
+}
+
 func GetHttpServer(key ...string) (cfg httpx.Config) {
 	cfg, err := utils.Get("config http", GetDefaultKey(), func(k string) (httpx.Config, bool) {
 		m, is := http[k]
@@ -190,6 +203,25 @@ func GetJwts() map[string]jwt.Config {
 func GetJwt(key ...string) (jt jwt.Config) {
 	jt, err := utils.Get("config jwt", GetDefaultKey(), func(k string) (jwt.Config, bool) {
 		m, is := jwts[k]
+		return m, is
+	}, key...)
+	if err != nil {
+		panic(err)
+	}
+	return
+}
+
+func SetI18ns(i map[string]i18n.Config) {
+	i18ns = i
+}
+
+func GetI18ns() map[string]i18n.Config {
+	return i18ns
+}
+
+func GetI18n(key ...string) (cfg i18n.Config) {
+	cfg, err := utils.Get("config i18n", GetDefaultKey(), func(k string) (i18n.Config, bool) {
+		m, is := i18ns[k]
 		return m, is
 	}, key...)
 	if err != nil {

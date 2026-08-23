@@ -14,6 +14,7 @@ import (
 	"github.com/wjoj/tool/v2/httpx"
 	"github.com/wjoj/tool/v2/log"
 	"github.com/wjoj/tool/v2/resources/casbinx"
+	"github.com/wjoj/tool/v2/resources/i18n"
 	"github.com/wjoj/tool/v2/resources/jwt"
 	"github.com/wjoj/tool/v2/utils"
 
@@ -33,6 +34,7 @@ const (
 	fnNameHttp    fnNameType = "http"
 	fnNameCasbin  fnNameType = "casbin"
 	fnNameJwt     fnNameType = "jwt"
+	fnNamei18n    fnNameType = "i18n"
 )
 
 type funcErr struct {
@@ -177,10 +179,25 @@ func (a *App) Jwt(options ...jwt.Option) *App {
 	}
 	return a
 }
+
+func (a *App) I18n(options ...i18n.Option) *App {
+	a.setIsConfig()
+	a.fnMap[fnNamei18n] = funcErr{
+		Fn: func() error {
+			return i18n.Init(config.GetI18ns(), options...)
+		},
+		RekeaseFn: nil,
+		Name:      fnNamei18n,
+	}
+	return a
+}
 func (a *App) HttpServer(options ...httpx.Option) *App {
 	a.setIsConfig()
 	a.fnMap[fnNameHttp] = funcErr{
 		Fn: func() error {
+			for key, v := range i18n.GetMap() {
+				options = append(options, httpx.WithSetI18nMapOption(key, v))
+			}
 			return httpx.Init(config.GetHttp(), options...)
 		},
 		RekeaseFn: httpx.ShutdownAll,
@@ -225,7 +242,6 @@ func (a *App) run(fs []funcErr) error {
 		if f.Fn == nil {
 			continue
 		}
-
 		if err := f.Fn(); err != nil {
 			fmt.Printf("%+v err:%+v\n", f.Name, err)
 			return err
@@ -288,6 +304,7 @@ func (a *App) Run() error {
 		})
 	}
 	fnames := []fnNameType{
+		fnNamei18n,
 		fnNameRedis, fnNameGorm, fnNameMongo,
 		fnNameJwt, fnNameCasbin, fnNameHttp,
 		fnNameGenGorm,

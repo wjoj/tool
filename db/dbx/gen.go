@@ -1,8 +1,12 @@
 package dbx
 
 import (
+	"fmt"
+
+	"github.com/iancoleman/strcase"
 	"github.com/wjoj/tool/v2/utils"
 	"gorm.io/gen"
+	"gorm.io/gen/field"
 	"gorm.io/gorm"
 )
 
@@ -17,6 +21,7 @@ type GenDBInfo struct {
 	Module            string
 	PkgName           string
 	FieldNullable     bool
+	IsJsonSnake       bool
 	ModelTypePkgPaths []string
 	TableModelOpts    []*TableModelOpt
 }
@@ -43,7 +48,7 @@ func WithLogConfigKeysGenOption(keys ...string) GenOption {
 	}
 }
 
-func WithGenModuleGenOption(module string) GenOption {
+func WithGenModuleOption(module string) GenOption {
 	return func(c *GenOptions) {
 		c.module = module
 	}
@@ -101,7 +106,7 @@ func GenByGorm(options ...GenOption) {
 		if len(info.ModelPkgPath) == 0 {
 			info.ModelPkgPath = "./models/" + info.PkgName
 		}
-		genb := gen.NewGenerator(gen.Config{
+		gx := gen.NewGenerator(gen.Config{
 			OutPath:           info.OutPath,
 			ModelPkgPath:      info.ModelPkgPath,
 			Mode:              gen.WithDefaultQuery | gen.WithQueryInterface,
@@ -111,8 +116,8 @@ func GenByGorm(options ...GenOption) {
 			FieldWithIndexTag: false,
 			FieldWithTypeTag:  true,
 		})
-
-		genb.WithDataTypeMap(map[string]func(detailType gorm.ColumnType) (dataType string){
+		gx.UseDB(Get(key))
+		gx.WithDataTypeMap(map[string]func(detailType gorm.ColumnType) (dataType string){
 			"tinyint":   func(detailType gorm.ColumnType) (dataType string) { return "int" },
 			"smallint":  func(detailType gorm.ColumnType) (dataType string) { return "int" },
 			"mediumint": func(detailType gorm.ColumnType) (dataType string) { return "int64" },
@@ -125,7 +130,7 @@ func GenByGorm(options ...GenOption) {
 			"date":      func(detailType gorm.ColumnType) (dataType string) { return "typesx.Date" },    // 自定义时间
 			"decimal":   func(detailType gorm.ColumnType) (dataType string) { return "typesx.Decimal" }, // 金额类型全部转换为第三方库,github.com/shopspring/decimal
 		})
-		genb.WithImportPkgPath(append([]string{
+		gx.WithImportPkgPath(append([]string{
 			"github.com/wjoj/tool/v2/typesx",
 			"github.com/wjoj/tool/v2/utils",
 			"github.com/shopspring/decimal",
@@ -133,11 +138,11 @@ func GenByGorm(options ...GenOption) {
 			module,
 		}, info.ModelTypePkgPaths...)...)
 
-		genb.UseDB(Get(key))
-		genb.ApplyBasic(genb.GenerateAllTable(setModelOpts()...)...)
+		gx.ApplyBasic(gx.GenerateAllTable(setModelOpts(info.IsJsonSnake)...)...)
 		for _, mopt := range info.TableModelOpts {
-			gm := genb.GenerateModel(mopt.Table,
-				append(setModelOpts(),
+			fmt.Printf("\nxxxss:%+v\n", mopt)
+			gm := gx.GenerateModel(mopt.Table,
+				append(setModelOpts(info.IsJsonSnake),
 					mopt.ModelOpts...,
 				)...,
 			)
@@ -145,22 +150,32 @@ func GenByGorm(options ...GenOption) {
 				gm.ImportPkgPaths = append(gm.ImportPkgPaths, mopt.ImportPkgPaths...)
 			}
 		}
-		genb.Execute()
+		gx.Execute()
 	}
 }
 
-func setModelOpts() []gen.ModelOpt {
+func setModelOpts(isToSnake bool) []gen.ModelOpt {
 	jsonField := gen.FieldJSONTagWithNS(func(columnName string) (tagContent string) {
 		if columnName == "deleted_at" {
 			return "-"
 		} else if columnName == "password" {
 			return "-"
 		}
-		return columnName
+
+		if isToSnake {
+			return columnName
+		}
+		return strcase.ToLowerCamel(columnName)
 	})
 	return []gen.ModelOpt{
 		jsonField,
 		gen.FieldType("deleted_at", "gorm.DeletedAt"),
 		gen.FieldJSONTag("deleted_at", "-"),
+		gen.FieldGORMTag("created_at", func(tag field.GormTag) field.GormTag {
+			return tag.Remove("default")
+		}),
+		gen.FieldGORMTag("updated_at", func(tag field.GormTag) field.GormTag {
+			return tag.Remove("default")
+		}),
 	}
 }

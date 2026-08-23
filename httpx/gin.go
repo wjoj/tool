@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"net/http"
-	"slices"
 	"strconv"
 	"time"
 
@@ -20,16 +19,17 @@ import (
 )
 
 type Config struct {
-	Debug                bool          `yaml:"debug" json:"debug"`
-	Log                  bool          `yaml:"log" json:"log"`
-	LogName              string        `yaml:"logName" json:"logName"` //指定log的名称
-	Port                 int           `yaml:"port" json:"port"`
-	ShutdownCloseMaxWait time.Duration `yaml:"shutdownCloseMaxWait" json:"shutdownCloseMaxWait"` //
-	Ping                 bool          `yaml:"ping" json:"ping"`
-	Swagger              bool          `yaml:"swagger" json:"swagger"`         // 是否开启docs
-	RoutePrefix          string        `yaml:"routePrefix" json:"routePrefix"` // 路由前缀
-	Cors                 bool          `yaml:"cors" json:"cors"`               // 是否启用cors
-	CorsCfg              CorsConfig    `yaml:"corsCfg" json:"corsCfg"`
+	Debug                bool              `yaml:"debug" json:"debug"`
+	Log                  bool              `yaml:"log" json:"log"`
+	LogName              string            `yaml:"logName" json:"logName"` //指定log的名称
+	Port                 int               `yaml:"port" json:"port"`
+	ShutdownCloseMaxWait time.Duration     `yaml:"shutdownCloseMaxWait" json:"shutdownCloseMaxWait"` //
+	Ping                 bool              `yaml:"ping" json:"ping"`
+	Swagger              bool              `yaml:"swagger" json:"swagger"`         // 是否开启docs
+	RoutePrefix          string            `yaml:"routePrefix" json:"routePrefix"` // 路由前缀
+	Cors                 bool              `yaml:"cors" json:"cors"`               // 是否启用cors
+	CorsCfg              CorsConfig        `yaml:"corsCfg" json:"corsCfg"`
+	BeforeHandlerFunc    []gin.HandlerFunc `yaml:"-" json:"-"`
 }
 
 type CorsConfig struct {
@@ -77,6 +77,12 @@ func New(cfg *Config) (*Http, error) {
 			g.Use(gin.Logger())
 		}
 	}
+	for _, f := range cfg.BeforeHandlerFunc {
+		if f == nil {
+			continue
+		}
+		g.Use(f)
+	}
 	g.RouterGroup = *g.Group(cfg.RoutePrefix)
 	if cfg.Log && cfg.LogName != "--" {
 		// g.Use(zapLogger(log.GetLogger(cfg.LogName).Desugar()))
@@ -91,12 +97,12 @@ func New(cfg *Config) (*Http, error) {
 			corsConfig.AllowOrigins = cfg.CorsCfg.AllowOrigins
 		} else {
 			corsConfig.AllowAllOrigins = true // 允许所有来源
-			corsConfig.AllowOriginWithContextFunc = func(c *gin.Context, origin string) bool {
-				if len(cfg.CorsCfg.AllowOrigins) == 0 || len(origin) == 0 {
-					return true
-				}
-				return slices.Contains(cfg.CorsCfg.AllowOrigins, origin)
-			}
+			// corsConfig.AllowOriginFunc = func(origin string) bool {
+			// 	if len(cfg.CorsCfg.AllowOrigins) == 0 || len(origin) == 0 {
+			// 		return true
+			// 	}
+			// 	return slices.Contains(cfg.CorsCfg.AllowOrigins, origin)
+			// }
 		}
 		if len(cfg.CorsCfg.AllowMethods) > 0 {
 			corsConfig.AllowMethods = cfg.CorsCfg.AllowMethods
@@ -227,7 +233,17 @@ func Init(cfgs map[string]Config, options ...Option) error {
 	} else {
 		opt.defKey.Keys = append(opt.defKey.Keys, opt.defKey.DefaultKey)
 	}
-
+	for key, i18nkey := range opt.i18nKeys {
+		i18nc, is := opt.i18nMap[i18nkey]
+		if !is {
+			log.Errorf("init http server %s not found i18n", key)
+			return fmt.Errorf("init http server %s not found i18n", key)
+		}
+		opt.beforeHandlerFunc[key] = append(opt.beforeHandlerFunc[key], func(c *gin.Context) {
+			c.Set(ContextKeyI18n, i18nc)
+			c.Next()
+		})
+	}
 	for _, key := range opt.defKey.Keys {
 		_, is := https[key]
 		if is {
@@ -237,6 +253,10 @@ func Init(cfgs map[string]Config, options ...Option) error {
 		if !is {
 			log.Errorf("init http server %s not found", key)
 			return fmt.Errorf("init http server %s not found", key)
+		}
+		hf, is := opt.beforeHandlerFunc[key]
+		if is {
+			cfg.BeforeHandlerFunc = hf
 		}
 		cli, err := New(&cfg)
 		if err != nil {
@@ -255,6 +275,12 @@ func Init(cfgs map[string]Config, options ...Option) error {
 				}
 			}, func() {
 				log.Infof("http server port: %d", cli.cfg.Port)
+				localip, err := utils.GetLocalIP()
+				if err != nil {
+					log.Warnf("get local ip error: %v", err)
+					localip = "127.0.0.1"
+				}
+				log.Infof("swagger doc: http://%v:%d/%v/docs/index.html", localip, cli.cfg.Port, cli.cfg.RoutePrefix)
 			}); err != nil {
 				log.Errorf("init http server %s run error: %v", key, err)
 				return

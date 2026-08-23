@@ -7,6 +7,7 @@ import (
 	"github.com/wjoj/tool/v2/httpx"
 	"github.com/wjoj/tool/v2/log"
 	"github.com/wjoj/tool/v2/resources/casbinx"
+	"github.com/wjoj/tool/v2/resources/i18n"
 	"github.com/wjoj/tool/v2/resources/jwt"
 )
 
@@ -30,5 +31,6 @@ type App struct {
 	Mongos    map[string]mongox.Config  `yaml:"mongos" json:"mongos"`       //mongo配置
 	Http      map[string]httpx.Config   `yaml:"http" json:"http"`           //http配置
 	Casbins   map[string]casbinx.Config `yaml:"casbins" json:"casbins"`     //casbin配置
-	Jwts      map[string]jwt.Config     `yaml:"jwts" json:"jwts"`
+	Jwts      map[string]jwt.Config     `yaml:"jwts" json:"jwts"`           //jwt配置
+	I18ns     map[string]i18n.Config    `yaml:"i18ns" json:"i18ns"`         //i18n配置
 }

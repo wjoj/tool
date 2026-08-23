@@ -5,7 +5,6 @@ import (
 
 	"github.com/casbin/casbin/v2"
 	"github.com/casbin/casbin/v2/model"
-	"github.com/casbin/casbin/v2/persist"
 	gormadapter "github.com/casbin/gorm-adapter/v3"
 	"github.com/gin-contrib/authz"
 	"github.com/gin-gonic/gin"
@@ -73,7 +72,7 @@ func New(cfg *Config) (*Casbin, error) {
 	if len(cfg.Name) == 0 {
 		cfg.Name = "casbin_rule"
 	}
-	var adapter persist.Adapter
+	var adapter any
 	var err error
 	switch cfg.DBType {
 	case DbTypeGorm:

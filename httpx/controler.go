@@ -9,6 +9,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/gin-gonic/gin/binding"
 	"github.com/go-playground/validator/v10"
+	"github.com/wjoj/tool/v2/log"
 )
 
 type ResponseData struct {
@@ -16,6 +17,10 @@ type ResponseData struct {
 	Msg  string `json:"msg"`
 	UUID string `json:"uuid"`
 	Data any    `json:"data"`
+}
+
+type Bind interface {
+	Name() string
 }
 
 type Controller struct {
@@ -144,14 +149,11 @@ func Handle(f func(*gin.Context) (data any, err error)) func(g *gin.Context) {
 	}
 }
 
-func HandleParameter[P any](f func(g *gin.Context, parameter P) (data any, err error), binds ...binding.Binding) func(g *gin.Context) {
+func HandleWithParams[P any](f func(g *gin.Context, parameter P) (data any, err error), binds ...Bind) func(g *gin.Context) {
 	return func(g *gin.Context) {
 		var req P
-		for _, bind := range binds {
-			if err := g.ShouldBindWith(&req, bind); err != nil {
-				Fail(g, err)
-				return
-			}
+		if err := bindParemeter(g, &req, binds...); err != nil {
+			return
 		}
 		data, err := f(g, req)
 		if err != nil {
@@ -174,7 +176,7 @@ type HandleT[A any] interface {
 	HandleType[A] | HandleResType[A]
 }
 
-func HandleAuthT[A any, F HandleT[A], Ag AuthInfG[A]](f F, binds ...binding.Binding) func(g *gin.Context) {
+func HandleAuthT[A any, F HandleT[A], Ag AuthInfG[A]](f F, binds ...Bind) func(g *gin.Context) {
 	return func(g *gin.Context) {
 		auth := new(A)
 		var a Ag = auth
@@ -183,11 +185,8 @@ func HandleAuthT[A any, F HandleT[A], Ag AuthInfG[A]](f F, binds ...binding.Bind
 			return
 		}
 		var req any
-		for _, bind := range binds {
-			if err := g.ShouldBindWith(&req, bind); err != nil {
-				Fail(g, err)
-				return
-			}
+		if err := bindParemeter(g, &req, binds...); err != nil {
+			return
 		}
 		var fn any = f
 		switch fnc := fn.(type) {
@@ -221,7 +220,7 @@ func HandleAuth[A any, Ag AuthInfG[A]](f func(g *gin.Context, auth A) (data any,
 	}
 }
 
-func HandleAuthRes[A any, Ag AuthInfG[A]](f func(g *gin.Context, auth A) func(res ...any)) func(g *gin.Context) {
+func HandleWithAuthAndResponse[A any, Ag AuthInfG[A], R any, Rinf ResponseInf[R]](f func(g *gin.Context, auth A, res *R)) func(g *gin.Context) {
 	return func(g *gin.Context) {
 		auth := new(A)
 		var a Ag = auth
@@ -229,8 +228,51 @@ func HandleAuthRes[A any, Ag AuthInfG[A]](f func(g *gin.Context, auth A) func(re
 			Fail(g, err)
 			return
 		}
-		f(g, *auth)(resf(g))
+		res := new(R)
+		var r Rinf = res
+		f(g, *auth, r)
+		handleJSONResponse(g, r)
 	}
+}
+
+func HandleWithParamsAndResponse[P any, R any, Rinf ResponseInf[R]](f func(g *gin.Context, parameter P, res *R), binds ...Bind) func(g *gin.Context) {
+	return func(g *gin.Context) {
+		var req P
+		if err := bindParemeter(g, &req, binds...); err != nil {
+			return
+		}
+		res := new(R)
+		var r Rinf = res
+		f(g, req, r)
+		handleJSONResponse(g, r)
+	}
+}
+
+func bindParemeter(g *gin.Context, req any, binds ...Bind) error {
+	for _, bind := range binds {
+		switch bid := bind.(type) {
+		case binding.BindingUri:
+			if err := g.ShouldBindUri(req); err != nil {
+				Fail(g, err)
+				return err
+			}
+		case binding.BindingBody:
+			if err := g.ShouldBindBodyWith(req, bid); err != nil {
+				Fail(g, err)
+				return err
+			}
+		case binding.Binding:
+			if err := g.ShouldBindWith(req, bid); err != nil {
+				Fail(g, err)
+				return err
+			}
+		default:
+			err := errors.New("not found bind")
+			Fail(g, err)
+			return err
+		}
+	}
+	return nil
 }
 
 type Res struct {
@@ -243,6 +285,110 @@ type Res struct {
 type HttpStatus int
 type MsgType string
 type FailType string
+type ResponseInfc interface {
+	Data() any
+	Msg() string
+	IsLog() bool
+	Code() ErrCodeType
+	Uid() string
+	Success(data any, msg ...string)
+	Fail(msg string)
+	FailDataCode(data any, msg string, code ErrCodeType)
+	Error(err error)
+	ErrorDataCode(data any, err error, code ErrCodeType)
+	FailLog(msg string)
+	FailDataCodeLog(data any, msg string, code ErrCodeType)
+	Abort()
+	IsAbort() bool
+}
+type ResponseInf[R any] interface {
+	*R
+	ResponseInfc
+}
+type ResData struct {
+	code    ErrCodeType
+	msg     string
+	isLog   bool
+	data    any
+	isAbort bool
+}
+
+func (res ResData) Data() any {
+	return res.data
+}
+func (res ResData) Msg() string {
+	return res.msg
+}
+func (res ResData) IsLog() bool {
+	return res.isLog
+}
+func (res ResData) Code() ErrCodeType {
+	return res.code
+}
+func (res ResData) Uid() string {
+	return uuid()
+}
+
+func (res *ResData) Success(data any, msg ...string) {
+	res.data = data
+	if len(msg) > 0 {
+		res.msg = msg[0]
+	} else {
+		res.msg = ErrCodeTypeSuccess.Error()
+	}
+	res.code = ErrCodeTypeSuccess
+}
+
+func (res *ResData) Fail(msg string) {
+	res.msg = msg
+	res.code = ErrCodeTypeFail
+}
+func (res *ResData) FailDataCode(data any, msg string, code ErrCodeType) {
+	res.data = data
+	res.msg = msg
+	res.code = code
+}
+
+func (res *ResData) FailLog(msg string) {
+	res.msg = msg
+	res.code = ErrCodeTypeFail
+	res.isLog = true
+}
+
+func (res *ResData) FailDataCodeLog(data any, msg string, code ErrCodeType) {
+	res.data = data
+	res.msg = msg
+	res.code = code
+	res.isLog = true
+}
+
+func (res *ResData) Error(err error) {
+	if err != nil {
+		res.msg = err.Error()
+	} else {
+		res.msg = ErrCodeTypeFail.Error()
+	}
+	res.code = ErrCodeTypeFail
+	res.isLog = true
+}
+func (res *ResData) ErrorDataCode(data any, err error, code ErrCodeType) {
+	res.data = data
+	if err != nil {
+		res.msg = err.Error()
+	} else {
+		res.msg = code.Error()
+	}
+	res.code = code
+	res.isLog = true
+}
+
+func (res *ResData) Abort() {
+	res.isAbort = true
+}
+
+func (res *ResData) IsAbort() bool {
+	return res.isAbort
+}
 
 func resf(ctx *gin.Context) func(res ...any) {
 	return func(res ...any) {
@@ -278,6 +424,13 @@ func resf(ctx *gin.Context) func(res ...any) {
 			case FailType:
 				re.Code = ErrCodeTypeFail
 				re.Msg = string(data)
+			case error:
+				re.Code = ErrCodeTypeFail
+				re.Msg = data.Error()
+			case Res:
+				re = data
+			case *Res:
+				re = *data
 			default:
 				re.Data = data
 			}
@@ -291,7 +444,7 @@ func resf(ctx *gin.Context) func(res ...any) {
 	}
 }
 
-func HandleAuthParameter[A any, AInf AuthInfG[A], P any](f func(g *gin.Context, auth A, parameter P) (data any, err error), binds ...binding.Binding) func(g *gin.Context) {
+func HandleAuthParameter[A any, AInf AuthInfG[A], P any](f func(g *gin.Context, auth A, parameter P) (data any, err error), binds ...Bind) func(g *gin.Context) {
 	return func(g *gin.Context) {
 		auth := new(A)
 		var a AInf = auth
@@ -300,11 +453,8 @@ func HandleAuthParameter[A any, AInf AuthInfG[A], P any](f func(g *gin.Context, 
 			return
 		}
 		var req P
-		for _, bind := range binds {
-			if err := g.ShouldBindWith(&req, bind); err != nil {
-				Fail(g, err)
-				return
-			}
+		if err := bindParemeter(g, &req, binds...); err != nil {
+			return
 		}
 		data, err := f(g, *auth, req)
 		if err != nil {
@@ -314,7 +464,7 @@ func HandleAuthParameter[A any, AInf AuthInfG[A], P any](f func(g *gin.Context, 
 		Success(g, data)
 	}
 }
-func HandleAuthParameterRes[A any, AInf AuthInfG[A], P any](f func(g *gin.Context, auth A, parameter P) func(res ...any), binds ...binding.Binding) func(g *gin.Context) {
+func HandleWithAuthParamsAndResponse[A any, AInf AuthInfG[A], P any, R any, Rinf ResponseInf[R]](f func(g *gin.Context, auth A, parameter P, res *R), binds ...Bind) func(g *gin.Context) {
 	return func(g *gin.Context) {
 		auth := new(A)
 		var a AInf = auth
@@ -323,14 +473,34 @@ func HandleAuthParameterRes[A any, AInf AuthInfG[A], P any](f func(g *gin.Contex
 			return
 		}
 		var req P
-		for _, bind := range binds {
-			if err := g.ShouldBindWith(&req, bind); err != nil {
-				Fail(g, err)
-				return
-			}
+		if err := bindParemeter(g, &req, binds...); err != nil {
+			return
 		}
-		f(g, *auth, req)(resf(g))
+		res := new(R)
+		var r Rinf = res
+		f(g, *auth, req, r)
+		handleJSONResponse(g, r)
 	}
+}
+
+func handleJSONResponse(g *gin.Context, r ResponseInfc) {
+	if r.IsAbort() {
+		return
+	}
+	msg := r.Msg()
+	if i18nc, is := g.Get(ContextKeyI18n); is && !r.IsLog() {
+		if len(r.Msg()) == 0 {
+			log.Warnf("i18n msgId is empty")
+		} else if i18n, ok := i18nc.(I18nInf); ok {
+			msg = i18n.Translate(g, r.Msg())
+		}
+	}
+	Json(g, http.StatusOK, ResponseData{
+		Code: int(r.Code()),
+		Msg:  msg,
+		Data: r.Data(),
+		UUID: uuid(),
+	})
 }
 
 type AuthParameter[A any, P any] struct {
@@ -339,7 +509,7 @@ type AuthParameter[A any, P any] struct {
 	Parameter P
 }
 
-func HandleAuthParameter2[A any, AInf AuthInfG[A], P any](f func(p AuthParameter[A, P]) (data any, err error), binds ...binding.Binding) func(g *gin.Context) {
+func HandleWithAuthAndParams[A any, AInf AuthInfG[A], P any](f func(p AuthParameter[A, P]) (data any, err error), binds ...binding.Binding) func(g *gin.Context) {
 	return func(g *gin.Context) {
 		auth := new(A)
 		var a AInf = auth

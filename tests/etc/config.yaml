@@ -6,7 +6,7 @@ http:
     port: 8080
     shutdownCloseMaxWait: 10s
     log: true
-    logName: 
+    logName:
     debug: false
     ping: true
     swagger: false
@@ -24,7 +24,7 @@ logs:
     maxBackups: 10 #保留的最大旧日志文件数
     maxAge: 7 #保留的最大旧日志文件天数
     compress: false #是否压缩旧日志文件
-    
+
 dbs:
   def: #默认配置
     driver: mysql
@@ -32,9 +32,9 @@ dbs:
     port: 3308
     user: root
     password: root
-    dbname: test 
+    dbname: test
     debug: true
-    prefix: 
+    prefix:
     charset: utf8mb4
     maxIdleConns: 100
     maxOpenConns: 100
@@ -42,14 +42,14 @@ dbs:
     connMaxIdleTime: 10m
     timeout: 10
     logLevel: info
-    log: 
-  
+    logName: --
+
 rediss:
   def:
-    addrs: 
+    addrs:
       - localhost:6379
     isCluster: false
-    username: 
+    username:
     password:
     readTimeout:
     writeTimeout:
