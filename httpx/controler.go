@@ -94,6 +94,7 @@ func Fail(g *gin.Context, err error) {
 			Code: ErrCodeTypeFail.GetCode(),
 			UUID: uuid(),
 			// Msg:  er[0].Translate(TransZh),
+			Msg:  er[0].Error(),
 			Data: nil,
 		})
 	case ErrCodeType:
