@@ -35,6 +35,7 @@ const (
 	fnNameCasbin  fnNameType = "casbin"
 	fnNameJwt     fnNameType = "jwt"
 	fnNamei18n    fnNameType = "i18n"
+	fnNameWith    fnNameType = "with"
 )
 
 type funcErr struct {
@@ -257,18 +258,6 @@ func (a *App) AddServer(srvName string) *App {
 }
 
 func (a *App) run(fs []funcErr) error {
-	for i := range a.fns {
-		f := a.fns[i]
-		if err := f(a); err != nil {
-			return err
-		}
-	}
-	for i := range a.funs {
-		f := a.funs[i]
-		if err := f(); err != nil {
-			return err
-		}
-	}
 	for i := range fs {
 		f := fs[i]
 		if f.Fn == nil {
@@ -348,12 +337,30 @@ func (a *App) Run() error {
 		})
 	}
 	fnames := []fnNameType{
+		fnNameWith,
 		fnNamei18n,
 		fnNameRedis, fnNameGorm, fnNameMongo,
 		fnNameJwt, fnNameCasbin, fnNameHttp,
 		fnNameGenGorm,
 	}
 	for _, fname := range fnames {
+		if fnNameWith == fname {
+			for _, f := range a.fns {
+				fs = append(fs, funcErr{
+					Fn: func() error {
+						return f(a) // 调用with函数
+					},
+					Name: fnNameWith,
+				})
+			}
+			for _, f := range a.funs {
+				fs = append(fs, funcErr{
+					Fn:   f,
+					Name: fnNameWith,
+				})
+			}
+			continue
+		}
 		fn, is := a.fnMap[fname]
 		if is {
 			fs = append(fs, fn)
