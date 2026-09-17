@@ -12,7 +12,36 @@ import (
 	"github.com/spf13/viper"
 )
 
-func Read(cfgRoot, cfgFile string) error {
+func Read[T any](cfgRoot, cfgFile string, onFunc func(e fsnotify.Event)) (fcfg *viper.Viper, cfg T, err error) {
+	cfgpath := filepath.Join(cfgRoot, cfgFile)
+	ext := strings.ToLower(strings.Replace(filepath.Ext(cfgFile), ".", "", 1))
+	if ext == "yml" {
+		ext = "yaml"
+	}
+	fcfg = viper.New()
+	fcfg.SetConfigFile(cfgpath)
+	fcfg.SetConfigType(ext)
+	if er := fcfg.ReadInConfig(); er != nil {
+		err = errors.New("read config file failed: " + er.Error())
+		return
+	}
+	tagName := ext
+	if ext == "yml" {
+		tagName = "yaml"
+	}
+	if er := fcfg.Unmarshal(&cfg, decoderTagName(tagName)); er != nil {
+		err = errors.New("unmarshal config failed: " + er.Error())
+		return
+	}
+	if onFunc == nil {
+		return
+	}
+	fcfg.OnConfigChange(onFunc)
+	fcfg.WatchConfig()
+	return
+}
+
+func ReadSys(cfgRoot, cfgFile string) error {
 	cfgpath := filepath.Join(cfgRoot, cfgFile)
 	ext := strings.ToLower(strings.Replace(filepath.Ext(cfgFile), ".", "", 1))
 	if ext == "yml" {

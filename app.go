@@ -49,12 +49,16 @@ type cmdarg struct {
 }
 
 type App struct {
-	isConfig bool
-	fnMap    map[fnNameType]funcErr
-	cmdarg   *cmdarg
-	opt      Options
-	rootCmd  *cobra.Command
-	cmds     []*cobra.Command
+	isConfig    bool
+	fnMap       map[fnNameType]funcErr
+	cmdarg      *cmdarg
+	opt         Options
+	funs        []func() error
+	fns         []func(a *App) error
+	rekeaseFuns []func() error
+	rekeaseFns  []func(a *App) error
+	rootCmd     *cobra.Command
+	cmds        []*cobra.Command
 }
 
 func NewApp(opts ...Option) *App {
@@ -82,7 +86,7 @@ func (a *App) Config() *App {
 	a.cmdarg.config = a.rootCmd.PersistentFlags().StringP("config", "c", "config.yaml", "configuration file")
 	a.fnMap[fnNameConfig] = funcErr{
 		Fn: func() error {
-			return config.Read(*a.cmdarg.configroot, *a.cmdarg.config)
+			return config.ReadSys(*a.cmdarg.configroot, *a.cmdarg.config)
 		},
 		RekeaseFn: nil,
 		Name:      fnNameConfig,
@@ -207,18 +211,34 @@ func (a *App) HttpServer(options ...httpx.Option) *App {
 }
 
 func (a *App) With(is bool, fn func(a *App) error) *App {
+	if !is {
+		return a
+	}
+	a.fns = append(a.fns, fn)
 	return a
 }
 
 func (a *App) WithFunc(is bool, fn func() error) *App {
+	if !is {
+		return a
+	}
+	a.funs = append(a.funs, fn)
 	return a
 }
 
 func (a *App) WithRekease(is bool, fn func(a *App) error) *App {
+	if !is {
+		return a
+	}
+	a.rekeaseFns = append(a.rekeaseFns, fn)
 	return a
 }
 
 func (a *App) WithRekeaseFunc(is bool, fn func() error) *App {
+	if !is {
+		return a
+	}
+	a.rekeaseFuns = append(a.rekeaseFuns, fn)
 	return a
 }
 
@@ -237,6 +257,18 @@ func (a *App) AddServer(srvName string) *App {
 }
 
 func (a *App) run(fs []funcErr) error {
+	for i := range a.fns {
+		f := a.fns[i]
+		if err := f(a); err != nil {
+			return err
+		}
+	}
+	for i := range a.funs {
+		f := a.funs[i]
+		if err := f(); err != nil {
+			return err
+		}
+	}
 	for i := range fs {
 		f := fs[i]
 		if f.Fn == nil {
@@ -251,6 +283,18 @@ func (a *App) run(fs []funcErr) error {
 }
 
 func (a *App) rekease(fs []funcErr) error {
+	for i := range a.rekeaseFns {
+		f := a.rekeaseFns[i]
+		if err := f(a); err != nil {
+			return err
+		}
+	}
+	for i := range a.rekeaseFuns {
+		f := a.rekeaseFuns[i]
+		if err := f(); err != nil {
+			return err
+		}
+	}
 	rel := func() error {
 		for _, f := range fs {
 			if f.RekeaseFn == nil {
