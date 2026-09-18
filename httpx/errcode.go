@@ -76,18 +76,21 @@ func (e ErrCodeType) SetMsg(msg string, msgs ...string) ErrMsgData {
 	}
 }
 
-func (e ErrCodeType) I18nMsg(g *gin.Context, msg string, msgs ...string) ErrMsgData {
-	return e.I18nDataMsg(g, nil, msg, msgs...)
+func (e ErrCodeType) I18nMsg(g *gin.Context, msgId string, msgs ...string) ErrMsgData {
+	return e.I18nDataMsg(g, nil, msgId, msgs...)
 }
 
-func (e ErrCodeType) I18nDataMsg(g *gin.Context, data any, msg string, msgs ...string) ErrMsgData {
-	if len(msgs) > 0 {
-		msg = fmt.Sprintf(msg, msgs)
-	}
+func (e ErrCodeType) I18nDataMsg(g *gin.Context, data any, msgId string, msgs ...string) ErrMsgData {
+	var msg string
 	if i18nc, is := g.Get(ContextKeyI18n); is {
 		if i18n, ok := i18nc.(I18nInf); ok {
-			msg = i18n.Translate(g, msg)
+			msg = i18n.Translate(g, msgId)
+			if len(msgs) > 0 {
+				msg = fmt.Sprintf(msg, msgs)
+			}
 		}
+	} else {
+		msg = msgId
 	}
 	return ErrMsgData{
 		Code: e,
