@@ -1,6 +1,10 @@
 package httpx
 
-import "github.com/gin-gonic/gin"
+import (
+	"fmt"
+
+	"github.com/gin-gonic/gin"
+)
 
 type ErrMsgData struct {
 	Code ErrCodeType `json:"code"`
@@ -69,11 +73,14 @@ func (e ErrCodeType) SetMsg(msg string) ErrMsgData {
 	}
 }
 
-func (e ErrCodeType) I18nMsg(g *gin.Context, msg string) ErrMsgData {
-	return e.I18nDataMsg(g, nil, msg)
+func (e ErrCodeType) I18nMsg(g *gin.Context, msg string, msgs ...string) ErrMsgData {
+	return e.I18nDataMsg(g, nil, msg, msgs...)
 }
 
-func (e ErrCodeType) I18nDataMsg(g *gin.Context, data any, msg string) ErrMsgData {
+func (e ErrCodeType) I18nDataMsg(g *gin.Context, data any, msg string, msgs ...string) ErrMsgData {
+	if len(msgs) > 0 {
+		msg = fmt.Sprintf(msg, msgs)
+	}
 	if i18nc, is := g.Get(ContextKeyI18n); is {
 		if i18n, ok := i18nc.(I18nInf); ok {
 			msg = i18n.Translate(g, msg)
