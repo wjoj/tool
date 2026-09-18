@@ -65,7 +65,10 @@ func (e ErrCodeType) SetData(data any) ErrMsgData {
 	}
 }
 
-func (e ErrCodeType) SetMsg(msg string) ErrMsgData {
+func (e ErrCodeType) SetMsg(msg string, msgs ...string) ErrMsgData {
+	if len(msgs) > 0 {
+		msg = fmt.Sprintf(msg, msgs)
+	}
 	return ErrMsgData{
 		Code: e,
 		Msg:  msg,
